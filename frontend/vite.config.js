@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// /api requests are forwarded to the FastAPI backend
+// /api requests are forwarded to the Express backend
 export default defineConfig({
   plugins: [react()],
   server: {

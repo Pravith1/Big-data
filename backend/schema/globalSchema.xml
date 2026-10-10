@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globalSchema>
+
+    <!-- MongoDB Entities (Document Data: "What information does this entity contain?") -->
+
+    <entity name="Player">
+        <storage database="mongodb" collection="players" primaryKey="_id"/>
+    </entity>
+
+    <entity name="TrainingSession">
+        <storage database="mongodb" collection="training_sessions" primaryKey="_id" foreignKey="playerId"/>
+    </entity>
+
+    <entity name="MedicalRecord">
+        <storage database="mongodb" collection="medical_records" primaryKey="_id" foreignKey="playerId"/>
+    </entity>
+
+    <entity name="Tournament">
+        <storage database="mongodb" collection="tournaments" primaryKey="_id"/>
+    </entity>
+
+    <entity name="PerformanceRecord">
+        <storage database="mongodb" collection="performance_records" primaryKey="_id" foreignKey="playerId"/>
+    </entity>
+
+
+    <!-- Neo4j Graph Entities (Nodes: "How are these entities connected?") -->
+
+    <graphEntity name="Player">
+        <storage database="neo4j" label="Player" keyProperty="id"/>
+    </graphEntity>
+
+    <graphEntity name="Coach">
+        <storage database="neo4j" label="Coach" keyProperty="id"/>
+    </graphEntity>
+
+    <graphEntity name="Team">
+        <storage database="neo4j" label="Team" keyProperty="id"/>
+    </graphEntity>
+
+    <graphEntity name="Sport">
+        <storage database="neo4j" label="Sport" keyProperty="id"/>
+    </graphEntity>
+
+    <graphEntity name="TrainingCenter">
+        <storage database="neo4j" label="TrainingCenter" keyProperty="id"/>
+    </graphEntity>
+
+    <graphEntity name="Tournament">
+        <storage database="neo4j" label="Tournament" keyProperty="id"/>
+    </graphEntity>
+
+
+    <!-- Neo4j Graph Relationships -->
+
+    <relationship name="MEMBER_OF" from="Player" to="Team">
+        <storage database="neo4j"/>
+    </relationship>
+
+    <relationship name="COACHES" from="Coach" to="Team">
+        <storage database="neo4j"/>
+    </relationship>
+
+    <relationship name="COACHED_BY" from="Player" to="Coach">
+        <storage database="neo4j"/>
+    </relationship>
+
+    <relationship name="PLAYS" from="Player" to="Sport">
+        <storage database="neo4j"/>
+    </relationship>
+
+    <relationship name="TRAINS_AT" from="Player" to="TrainingCenter">
+        <storage database="neo4j"/>
+    </relationship>
+
+    <relationship name="PARTICIPATES_IN" from="Team" to="Tournament">
+        <storage database="neo4j"/>
+    </relationship>
+
+    <relationship name="PARTICIPATES_IN" from="Player" to="Tournament">
+        <storage database="neo4j"/>
+    </relationship>
+
+    <relationship name="HELD_AT" from="Tournament" to="TrainingCenter">
+        <storage database="neo4j"/>
+    </relationship>
+
+</globalSchema>

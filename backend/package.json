@@ -1,0 +1,31 @@
+{
+  "name": "distributed-sports-management-backend",
+  "version": "1.0.0",
+  "description": "Distributed Sports Management Platform Express Backend with XML Global Schema, MongoDB, and Neo4j",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "seed": "node seed.js"
+  },
+  "keywords": [
+    "express",
+    "mongodb",
+    "neo4j",
+    "xml-schema",
+    "distributed-database"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "fast-xml-parser": "^4.4.0",
+    "mongodb": "^6.8.0",
+    "neo4j-driver": "^5.23.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
