@@ -1,0 +1,33 @@
+meta {
+  name: Update Player
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/players/updatePlayer/P999
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "position": "Winger",
+    "age": 23
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data.position: eq Winger
+}
+
+tests {
+  test("updates player document", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data.position).to.equal('Winger');
+  });
+}

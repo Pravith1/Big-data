@@ -1,0 +1,33 @@
+meta {
+  name: Add Player to Tournament
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/relationships/player-tournament
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "playerId": "P101",
+    "tournamentId": "T501"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data.relationship: eq PARTICIPATES_IN
+}
+
+tests {
+  test("creates PARTICIPATES_IN relationship in Neo4j", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data.relationship).to.equal('PARTICIPATES_IN');
+  });
+}

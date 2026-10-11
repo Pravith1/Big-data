@@ -70,7 +70,7 @@ async function getPlayersCoachedBy(coachNameOrId) {
     OPTIONAL MATCH (p)-[:COACHED_BY]->(c)
     WITH DISTINCT p, t, c
     WHERE p IS NOT NULL
-    RETURN p.id AS playerId, p.name AS playerName, p.sport AS sport, t.id AS teamId, t.name AS teamName, c.name AS coachName
+    RETURN p.id AS id, p.id AS playerId, p.name AS name, p.name AS playerName, p.sport AS sport, t.id AS teamId, t.name AS teamName, c.name AS coachName
   `;
   return await runCypher(query, { coachParam: coachNameOrId });
 }
@@ -80,7 +80,7 @@ async function getPlayersInTeam(teamIdOrName) {
     MATCH (t:Team)
     WHERE t.id = $teamParam OR t.name = $teamParam
     MATCH (p:Player)-[:MEMBER_OF]->(t)
-    RETURN p.id AS playerId, p.name AS playerName, t.id AS teamId, t.name AS teamName
+    RETURN p.id AS id, p.id AS playerId, p.name AS name, p.name AS playerName, p.sport AS sport, t.id AS teamId, t.name AS teamName
   `;
   return await runCypher(query, { teamParam: teamIdOrName });
 }
@@ -90,7 +90,18 @@ async function getTeamsCoachedBy(coachNameOrId) {
     MATCH (c:Coach)
     WHERE c.name = $coachParam OR c.id = $coachParam
     MATCH (c)-[:COACHES]->(t:Team)
-    RETURN t.id AS teamId, t.name AS teamName, c.id AS coachId, c.name AS coachName
+    RETURN t.id AS id, t.id AS teamId, t.name AS name, t.name AS teamName,
+           coalesce(
+             t.sport,
+             CASE
+               WHEN toLower(t.name) CONTAINS 'football' THEN 'Football'
+               WHEN toLower(t.name) CONTAINS 'cricket' THEN 'Cricket'
+               WHEN toLower(t.name) CONTAINS 'shuttler' OR toLower(t.name) CONTAINS 'badminton' THEN 'Badminton'
+               WHEN toLower(t.name) CONTAINS 'swim' OR toLower(t.name) CONTAINS 'aqua' THEN 'Swimming'
+               ELSE 'Football'
+             END
+           ) AS sport,
+           c.id AS coachId, c.name AS coachName
   `;
   return await runCypher(query, { coachParam: coachNameOrId });
 }

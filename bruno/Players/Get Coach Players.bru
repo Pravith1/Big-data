@@ -1,0 +1,30 @@
+meta {
+  name: Get Coach Players
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/players/getCoachPlayers?coachId=C101
+  body: none
+  auth: none
+}
+
+params:query {
+  coachId: C101
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data: isDefined
+}
+
+tests {
+  test("returns players coached by coach", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data).to.be.an('array');
+  });
+}

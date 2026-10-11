@@ -1,0 +1,30 @@
+meta {
+  name: Get XML Schema
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/schema
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.mongodbEntities: isDefined
+  res.body.neo4jNodes: isDefined
+  res.body.neo4jRelationships: isDefined
+}
+
+tests {
+  test("returns valid parsed XML schema entities", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.mongodbEntities.length).to.be.greaterThan(0);
+    expect(body.neo4jNodes.length).to.be.greaterThan(0);
+    expect(body.neo4jRelationships.length).to.be.greaterThan(0);
+  });
+}

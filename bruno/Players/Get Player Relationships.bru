@@ -1,0 +1,27 @@
+meta {
+  name: Get Player Relationships
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/players/getPlayerRelationships/P101
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data.playerId: eq P101
+}
+
+tests {
+  test("returns Neo4j graph relationships for player", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data.playerId).to.equal('P101');
+    expect(body.data.teamName).to.be.a('string');
+  });
+}

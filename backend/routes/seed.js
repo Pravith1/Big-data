@@ -25,10 +25,10 @@ const COACHES = [
 ];
 
 const TEAMS = [
-  { id: 'TEAM01', name: 'National Football Team' },
-  { id: 'TEAM02', name: 'Chennai Cricket Academy' },
-  { id: 'TEAM03', name: 'Bangalore Shuttlers' },
-  { id: 'TEAM04', name: 'Aqua Swim Club' }
+  { id: 'TEAM01', name: 'National Football Team', sport: 'Football' },
+  { id: 'TEAM02', name: 'Chennai Cricket Academy', sport: 'Cricket' },
+  { id: 'TEAM03', name: 'Bangalore Shuttlers', sport: 'Badminton' },
+  { id: 'TEAM04', name: 'Aqua Swim Club', sport: 'Swimming' }
 ];
 
 const TOURNAMENTS = [
@@ -131,7 +131,7 @@ async function seedNeo4j() {
 
     // Create Teams
     for (const t of TEAMS) {
-      await session.run('CREATE (:Team {id: $id, name: $name})', t);
+      await session.run('CREATE (:Team {id: $id, name: $name, sport: $sport})', t);
     }
     results.teams = TEAMS.length;
 
@@ -304,8 +304,12 @@ router.post('/', async (req, res) => {
     result.neo4j = { ok: false, error: err.message };
   }
 
-  const allOk = result.mongodb.ok && result.neo4j.ok;
-  res.status(allOk ? 200 : 500).json({ success: allOk, data: result });
+  const anyOk = result.mongodb.ok || result.neo4j.ok;
+  res.status(anyOk ? 200 : 500).json({
+    success: anyOk,
+    data: result,
+    note: !result.neo4j.ok ? 'MongoDB seeded successfully; Neo4j requires valid credentials in .env' : 'Both databases seeded successfully'
+  });
 });
 
 module.exports = router;

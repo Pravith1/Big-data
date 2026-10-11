@@ -1,57 +1,154 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <globalSchema>
 
-    <!-- MongoDB Entities (Document Data: "What information does this entity contain?") -->
+    <!-- ================================================================= -->
+    <!-- MongoDB Document Entities                                         -->
+    <!-- Defines the collection name, key constraints, and document fields -->
+    <!-- ================================================================= -->
 
     <entity name="Player">
         <storage database="mongodb" collection="players" primaryKey="_id"/>
+        <fields>
+            <field name="_id" type="string" required="true" primaryKey="true" description="Unique Player ID (e.g. P101)"/>
+            <field name="name" type="string" required="true" description="Full name of the player"/>
+            <field name="age" type="number" required="false" default="20"/>
+            <field name="gender" type="string" required="false" default="Male" allowed="Male,Female,Other"/>
+            <field name="sport" type="string" required="false" default="Football"/>
+            <field name="position" type="string" required="false" default="Player"/>
+            <field name="trainingCenterId" type="string" required="false" foreignKey="TrainingCenter.id"/>
+            <field name="contact" type="object" required="false">
+                <field name="email" type="string" required="false" default=""/>
+                <field name="phone" type="string" required="false" default=""/>
+            </field>
+            <field name="joinedDate" type="date" required="false" default="CURRENT_DATE"/>
+        </fields>
     </entity>
 
     <entity name="TrainingSession">
         <storage database="mongodb" collection="training_sessions" primaryKey="_id" foreignKey="playerId"/>
+        <fields>
+            <field name="_id" type="string" required="true" primaryKey="true" description="Unique session ID (e.g. TS1001)"/>
+            <field name="playerId" type="string" required="true" foreignKey="Player._id"/>
+            <field name="date" type="date" required="false" default="CURRENT_DATE"/>
+            <field name="durationMinutes" type="number" required="false" default="60"/>
+            <field name="metrics" type="object" required="false">
+                <field name="distanceKm" type="number" required="false" default="0"/>
+                <field name="steps" type="number" required="false" default="0"/>
+                <field name="calories" type="number" required="false" default="0"/>
+                <field name="averageHeartRate" type="number" required="false" default="120"/>
+                <field name="maximumHeartRate" type="number" required="false" default="160"/>
+            </field>
+            <field name="fitnessScore" type="number" required="false" default="7.5"/>
+            <field name="coachFeedback" type="string" required="false" default=""/>
+        </fields>
     </entity>
 
     <entity name="MedicalRecord">
         <storage database="mongodb" collection="medical_records" primaryKey="_id" foreignKey="playerId"/>
+        <fields>
+            <field name="_id" type="string" required="true" primaryKey="true" description="Unique record ID (e.g. MR501)"/>
+            <field name="playerId" type="string" required="true" foreignKey="Player._id"/>
+            <field name="injury" type="object" required="false">
+                <field name="type" type="string" required="true"/>
+                <field name="severity" type="string" required="false" default="Mild" allowed="Mild,Moderate,Severe"/>
+                <field name="date" type="date" required="false" default="CURRENT_DATE"/>
+            </field>
+            <field name="treatment" type="string" required="false" default="Rest"/>
+            <field name="recoveryStatus" type="string" required="false" default="Fit" allowed="Fit,Recovering,Injured"/>
+            <field name="fitnessAssessment" type="object" required="false">
+                <field name="score" type="number" required="false" default="80"/>
+                <field name="date" type="date" required="false" default="CURRENT_DATE"/>
+            </field>
+        </fields>
     </entity>
 
     <entity name="Tournament">
         <storage database="mongodb" collection="tournaments" primaryKey="_id"/>
+        <fields>
+            <field name="_id" type="string" required="true" primaryKey="true" description="Unique tournament ID (e.g. T501)"/>
+            <field name="name" type="string" required="true"/>
+            <field name="sport" type="string" required="false" default="Football"/>
+            <field name="location" type="string" required="false" default="Stadium"/>
+            <field name="startDate" type="date" required="false" default="CURRENT_DATE"/>
+            <field name="endDate" type="date" required="false" default="CURRENT_DATE"/>
+            <field name="status" type="string" required="false" default="Upcoming" allowed="Upcoming,Ongoing,Completed"/>
+        </fields>
     </entity>
 
     <entity name="PerformanceRecord">
         <storage database="mongodb" collection="performance_records" primaryKey="_id" foreignKey="playerId"/>
+        <fields>
+            <field name="_id" type="string" required="true" primaryKey="true" description="Unique performance record ID (e.g. PR1001)"/>
+            <field name="playerId" type="string" required="true" foreignKey="Player._id"/>
+            <field name="tournamentId" type="string" required="true" foreignKey="Tournament._id"/>
+            <field name="matchesPlayed" type="number" required="false" default="0"/>
+            <field name="goals" type="number" required="false" default="0"/>
+            <field name="assists" type="number" required="false" default="0"/>
+            <field name="rating" type="number" required="false" default="7.0"/>
+        </fields>
     </entity>
 
 
-    <!-- Neo4j Graph Entities (Nodes: "How are these entities connected?") -->
+    <!-- ================================================================= -->
+    <!-- Neo4j Graph Entities (Nodes)                                      -->
+    <!-- Defines graph node labels, key property, and properties           -->
+    <!-- ================================================================= -->
 
     <graphEntity name="Player">
         <storage database="neo4j" label="Player" keyProperty="id"/>
+        <properties>
+            <property name="id" type="string" required="true" key="true"/>
+            <property name="name" type="string" required="true"/>
+            <property name="sport" type="string" required="false"/>
+            <property name="age" type="number" required="false"/>
+        </properties>
     </graphEntity>
 
     <graphEntity name="Coach">
         <storage database="neo4j" label="Coach" keyProperty="id"/>
+        <properties>
+            <property name="id" type="string" required="true" key="true"/>
+            <property name="name" type="string" required="true"/>
+        </properties>
     </graphEntity>
 
     <graphEntity name="Team">
         <storage database="neo4j" label="Team" keyProperty="id"/>
+        <properties>
+            <property name="id" type="string" required="true" key="true"/>
+            <property name="name" type="string" required="true"/>
+        </properties>
     </graphEntity>
 
     <graphEntity name="Sport">
         <storage database="neo4j" label="Sport" keyProperty="id"/>
+        <properties>
+            <property name="id" type="string" required="true" key="true"/>
+            <property name="name" type="string" required="true"/>
+        </properties>
     </graphEntity>
 
     <graphEntity name="TrainingCenter">
         <storage database="neo4j" label="TrainingCenter" keyProperty="id"/>
+        <properties>
+            <property name="id" type="string" required="true" key="true"/>
+            <property name="name" type="string" required="true"/>
+            <property name="city" type="string" required="false"/>
+        </properties>
     </graphEntity>
 
     <graphEntity name="Tournament">
         <storage database="neo4j" label="Tournament" keyProperty="id"/>
+        <properties>
+            <property name="id" type="string" required="true" key="true"/>
+            <property name="name" type="string" required="true"/>
+        </properties>
     </graphEntity>
 
 
-    <!-- Neo4j Graph Relationships -->
+    <!-- ================================================================= -->
+    <!-- Neo4j Graph Relationships                                         -->
+    <!-- ================================================================= -->
 
     <relationship name="MEMBER_OF" from="Player" to="Team">
         <storage database="neo4j"/>

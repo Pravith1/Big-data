@@ -1,0 +1,33 @@
+meta {
+  name: Assign Coach to Team
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/relationships/coach-team
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "coachId": "C101",
+    "teamId": "TEAM01"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data.relationship: eq COACHES
+}
+
+tests {
+  test("creates COACHES relationship in Neo4j", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data.relationship).to.equal('COACHES');
+  });
+}

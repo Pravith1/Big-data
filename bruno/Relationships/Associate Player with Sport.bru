@@ -1,0 +1,33 @@
+meta {
+  name: Associate Player with Sport
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/relationships/player-sport
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "playerId": "P101",
+    "sportId": "SPORT01"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data.relationship: eq PLAYS
+}
+
+tests {
+  test("creates PLAYS relationship in Neo4j", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data.relationship).to.equal('PLAYS');
+  });
+}

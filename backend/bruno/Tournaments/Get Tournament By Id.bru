@@ -1,0 +1,26 @@
+meta {
+  name: Get Tournament By Id
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/tournaments/getTournamentById/T501
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data._id: eq T501
+}
+
+tests {
+  test("returns tournament by id", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data._id).to.equal('T501');
+  });
+}

@@ -1,0 +1,28 @@
+meta {
+  name: Get Player Full Profile
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/players/getPlayerFull/P101
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data._id: eq P101
+  res.body.data.graph: isDefined
+}
+
+tests {
+  test("returns merged MongoDB document with Neo4j graph relationships", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data._id).to.equal('P101');
+    expect(body.data.graph).to.be.an('object');
+  });
+}

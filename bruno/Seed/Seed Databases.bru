@@ -1,0 +1,28 @@
+meta {
+  name: Seed Databases
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/seed
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data.mongodb.ok: eq true
+  res.body.data.neo4j.ok: eq true
+}
+
+tests {
+  test("seed loaded sample data into MongoDB and Neo4j", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data.mongodb.ok).to.be.true;
+    expect(body.data.neo4j.ok).to.be.true;
+  });
+}

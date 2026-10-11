@@ -1,0 +1,33 @@
+meta {
+  name: Assign Player to Coach
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/relationships/player-coach
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "playerId": "P101",
+    "coachId": "C101"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data.relationship: eq COACHED_BY
+}
+
+tests {
+  test("creates COACHED_BY relationship in Neo4j", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data.relationship).to.equal('COACHED_BY');
+  });
+}

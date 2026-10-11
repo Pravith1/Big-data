@@ -1,0 +1,26 @@
+meta {
+  name: Get Coach Players
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/coaches/getCoachPlayers/C101
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data: isDefined
+}
+
+tests {
+  test("returns players for coach C101", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data).to.be.an('array');
+  });
+}

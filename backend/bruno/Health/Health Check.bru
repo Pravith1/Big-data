@@ -1,0 +1,30 @@
+meta {
+  name: Health Check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/health
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.services.mongodb.connected: eq true
+  res.body.services.neo4j.connected: eq true
+  res.body.services.xmlSchema.loaded: eq true
+}
+
+tests {
+  test("services are healthy and connected", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.services.mongodb.connected).to.be.true;
+    expect(body.services.neo4j.connected).to.be.true;
+    expect(body.services.xmlSchema.loaded).to.be.true;
+  });
+}

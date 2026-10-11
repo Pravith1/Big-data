@@ -1,0 +1,26 @@
+meta {
+  name: Get Coach Teams
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/coaches/getCoachTeams/C101
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data: isDefined
+}
+
+tests {
+  test("returns teams coached by coach", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data).to.be.an('array');
+  });
+}

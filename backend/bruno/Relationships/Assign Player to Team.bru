@@ -1,0 +1,33 @@
+meta {
+  name: Assign Player to Team
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/relationships/player-team
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "playerId": "P101",
+    "teamId": "TEAM01"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data.relationship: eq MEMBER_OF
+}
+
+tests {
+  test("creates MEMBER_OF relationship in Neo4j", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data.relationship).to.equal('MEMBER_OF');
+  });
+}

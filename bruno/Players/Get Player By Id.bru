@@ -1,0 +1,27 @@
+meta {
+  name: Get Player By Id
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/players/getPlayerById/P101
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data._id: eq P101
+}
+
+tests {
+  test("returns single player document from MongoDB", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data._id).to.equal('P101');
+    expect(body.data.name).to.equal('Pravith');
+  });
+}

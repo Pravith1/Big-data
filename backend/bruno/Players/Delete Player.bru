@@ -1,0 +1,24 @@
+meta {
+  name: Delete Player
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{baseUrl}}/api/players/deletePlayer/P999
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+}
+
+tests {
+  test("deletes player from MongoDB and Neo4j", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+  });
+}

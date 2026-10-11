@@ -2,15 +2,45 @@ const express = require('express');
 const router = express.Router();
 const playerController = require('../controllers/playerController');
 
-// POST   /api/players           → create player
-// GET    /api/players           → get all players (supports ?sport=Football)
-// GET    /api/players/:id       → get player profile from MongoDB
-// GET    /api/players/:id/full  → merged: MongoDB profile + Neo4j graph relationships
-// GET    /api/players/:id/training      → player's training history (MongoDB)
-// GET    /api/players/:id/relationships → player's graph relationships (Neo4j)
-// PUT    /api/players/:id       → update player
-// DELETE /api/players/:id       → delete from MongoDB + Neo4j
+// ─────────────────────────────────────────────────────────────
+// Dedicated Frontend Routes (Explicit Actions)
+// ─────────────────────────────────────────────────────────────
 
+// GET /api/players/getAllPlayers (supports ?sport=Football)
+router.get('/getAllPlayers', playerController.getAllPlayers);
+
+// GET /api/players/getCoachPlayerTraining (supports ?coachId=C101 or /:coachId)
+router.get('/getCoachPlayerTraining/:coachId', playerController.getCoachPlayerTraining);
+router.get('/getCoachPlayerTraining', playerController.getCoachPlayerTraining);
+
+// GET /api/players/getCoachPlayers (supports ?coachId=C101 or /:coachId)
+router.get('/getCoachPlayers/:coachId', playerController.getCoachPlayers);
+router.get('/getCoachPlayers', playerController.getCoachPlayers);
+
+// GET /api/players/getPlayerById/:id
+router.get('/getPlayerById/:id', playerController.getPlayerById);
+
+// GET /api/players/getPlayerFull/:id (MongoDB profile + Neo4j relationships merged)
+router.get('/getPlayerFull/:id', playerController.getPlayerFull);
+
+// GET /api/players/getPlayerTraining/:id (MongoDB training history)
+router.get('/getPlayerTraining/:id', playerController.getPlayerTraining);
+
+// GET /api/players/getPlayerRelationships/:id (Neo4j graph relationships)
+router.get('/getPlayerRelationships/:id', playerController.getPlayerRelationships);
+
+// POST /api/players/createPlayer
+router.post('/createPlayer', playerController.createPlayer);
+
+// PUT /api/players/updatePlayer/:id
+router.put('/updatePlayer/:id', playerController.updatePlayer);
+
+// DELETE /api/players/deletePlayer/:id
+router.delete('/deletePlayer/:id', playerController.deletePlayer);
+
+// ─────────────────────────────────────────────────────────────
+// Standard REST Aliases (Backward Compatibility)
+// ─────────────────────────────────────────────────────────────
 router.post('/', playerController.createPlayer);
 router.get('/', playerController.getAllPlayers);
 router.get('/:id/full', playerController.getPlayerFull);

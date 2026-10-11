@@ -3,187 +3,303 @@ const mongoService = require('./mongoService');
 const neo4jService = require('./neo4jService');
 
 // ─────────────────────────────────────────────────────────
-//  MONGODB-ONLY OPERATIONS
-// ─────────────────────────────────────────────────────────
-
-async function getAllPlayers(filters = {}) {
-  const { collection } = xmlSchemaService.getEntityStorage('Player');
-  const query = filters.sport ? { sport: filters.sport } : {};
-  return mongoService.findDocuments(collection, query);
-}
-
-async function getPlayerById(playerId) {
-  const { collection } = xmlSchemaService.getEntityStorage('Player');
-  return mongoService.findOneDocument(collection, { _id: playerId });
-}
-
-async function createPlayerDoc(doc) {
-  const { collection } = xmlSchemaService.getEntityStorage('Player');
-  return mongoService.insertDocument(collection, doc);
-}
-
-async function updatePlayerDoc(playerId, updates) {
-  const { collection } = xmlSchemaService.getEntityStorage('Player');
-  return mongoService.updateDocument(collection, { _id: playerId }, updates);
-}
-
-async function deletePlayerDoc(playerId) {
-  const { collection } = xmlSchemaService.getEntityStorage('Player');
-  return mongoService.deleteDocument(collection, { _id: playerId });
-}
-
-async function getTrainingByPlayer(playerId) {
-  const { collection } = xmlSchemaService.getEntityStorage('TrainingSession');
-  return mongoService.findDocuments(collection, { playerId });
-}
-
-async function createTrainingDoc(doc) {
-  const { collection } = xmlSchemaService.getEntityStorage('TrainingSession');
-  return mongoService.insertDocument(collection, doc);
-}
-
-async function updateTrainingDoc(sessionId, updates) {
-  const { collection } = xmlSchemaService.getEntityStorage('TrainingSession');
-  return mongoService.updateDocument(collection, { _id: sessionId }, updates);
-}
-
-async function deleteTrainingDoc(sessionId) {
-  const { collection } = xmlSchemaService.getEntityStorage('TrainingSession');
-  return mongoService.deleteDocument(collection, { _id: sessionId });
-}
-
-async function getAllTournaments() {
-  const { collection } = xmlSchemaService.getEntityStorage('Tournament');
-  return mongoService.findDocuments(collection, {});
-}
-
-async function getTournamentById(tournamentId) {
-  const { collection } = xmlSchemaService.getEntityStorage('Tournament');
-  return mongoService.findOneDocument(collection, { _id: tournamentId });
-}
-
-async function createTournamentDoc(doc) {
-  const { collection } = xmlSchemaService.getEntityStorage('Tournament');
-  return mongoService.insertDocument(collection, doc);
-}
-
-async function updateTournamentDoc(tournamentId, updates) {
-  const { collection } = xmlSchemaService.getEntityStorage('Tournament');
-  return mongoService.updateDocument(collection, { _id: tournamentId }, updates);
-}
-
-async function deleteTournamentDoc(tournamentId) {
-  const { collection } = xmlSchemaService.getEntityStorage('Tournament');
-  return mongoService.deleteDocument(collection, { _id: tournamentId });
-}
-
-async function getMedicalRecordsByPlayer(playerId) {
-  const { collection } = xmlSchemaService.getEntityStorage('MedicalRecord');
-  return mongoService.findDocuments(collection, { playerId });
-}
-
-async function getPerformanceByPlayer(playerId) {
-  const { collection } = xmlSchemaService.getEntityStorage('PerformanceRecord');
-  return mongoService.findDocuments(collection, { playerId });
-}
-
-async function getPerformanceByTournament(tournamentId) {
-  const { collection } = xmlSchemaService.getEntityStorage('PerformanceRecord');
-  return mongoService.findDocuments(collection, { tournamentId });
-}
-
-// ─────────────────────────────────────────────────────────
-//  NEO4J-ONLY OPERATIONS
-// ─────────────────────────────────────────────────────────
-
-async function getPlayerRelationships(playerId) {
-  // XML tells us: Player, Coach, Team, Sport, TrainingCenter → all Neo4j
-  const playerGraph = xmlSchemaService.getGraphEntityStorage('Player');
-  const records = await neo4jService.runCypher(
-    `
-    MATCH (p:${playerGraph.label} {id: $playerId})
-    OPTIONAL MATCH (p)-[:MEMBER_OF]->(t:Team)
-    OPTIONAL MATCH (p)-[:COACHED_BY]->(c:Coach)
-    OPTIONAL MATCH (p)-[:PLAYS]->(s:Sport)
-    OPTIONAL MATCH (p)-[:TRAINS_AT]->(tc:TrainingCenter)
-    RETURN
-      p.id AS playerId, p.name AS playerName,
-      t.id AS teamId, t.name AS teamName,
-      c.id AS coachId, c.name AS coachName,
-      s.id AS sportId, s.name AS sport,
-      tc.id AS trainingCenterId, tc.name AS trainingCenterName
-    `,
-    { playerId }
-  );
-  return records.length > 0 ? records[0] : null;
-}
-
-async function getPlayersByCoach(coachIdOrName) {
-  // XML: COACHES relationship → Neo4j; MEMBER_OF relationship → Neo4j
-  return neo4jService.getPlayersCoachedBy(coachIdOrName);
-}
-
-async function getTeamsByCoach(coachIdOrName) {
-  return neo4jService.getTeamsCoachedBy(coachIdOrName);
-}
-
-async function getPlayersByTeam(teamIdOrName) {
-  return neo4jService.getPlayersInTeam(teamIdOrName);
-}
-
-async function getTournamentPlayers(tournamentId) {
-  // XML: PARTICIPATES_IN (Player → Tournament) → Neo4j
-  const { name: relType } = xmlSchemaService.getRelationshipStorage('PARTICIPATES_IN');
-  const { label: tournamentLabel } = xmlSchemaService.getGraphEntityStorage('Tournament');
-  const { label: playerLabel } = xmlSchemaService.getGraphEntityStorage('Player');
-  return neo4jService.runCypher(
-    `
-    MATCH (p:${playerLabel})-[:${relType}]->(t:${tournamentLabel} {id: $tournamentId})
-    RETURN p.id AS playerId, p.name AS playerName
-    `,
-    { tournamentId }
-  );
-}
-
-async function getTournamentTeams(tournamentId) {
-  // XML: PARTICIPATES_IN (Team → Tournament) → Neo4j
-  const { name: relType } = xmlSchemaService.getRelationshipStorage('PARTICIPATES_IN');
-  const { label: tournamentLabel } = xmlSchemaService.getGraphEntityStorage('Tournament');
-  const { label: teamLabel } = xmlSchemaService.getGraphEntityStorage('Team');
-  return neo4jService.runCypher(
-    `
-    MATCH (t:${teamLabel})-[:${relType}]->(tr:${tournamentLabel} {id: $tournamentId})
-    RETURN t.id AS teamId, t.name AS teamName
-    `,
-    { tournamentId }
-  );
-}
-
-// ─────────────────────────────────────────────────────────
-//  CROSS-DATABASE OPERATIONS (Neo4j → MongoDB → Merge)
+//  GENERIC XML-DRIVEN DATABASE OPERATIONS
 // ─────────────────────────────────────────────────────────
 
 /**
- * GET /api/players/:id/full
- * MongoDB: full player profile document
- * Neo4j:   player's team, coach, sport, training center relationships
- * Merges into one unified response.
+ * Generic finder for any MongoDB entity defined in globalSchema.xml
+ */
+async function findEntities(entityName, query = {}, options = {}) {
+  const schema = xmlSchemaService.getEntitySchema(entityName);
+  if (!schema) throw new Error(`Unknown entity '${entityName}' in XML schema`);
+  return mongoService.findDocuments(schema.collection, query, options);
+}
+
+/**
+ * Generic single-document finder for any MongoDB entity defined in globalSchema.xml
+ */
+async function findEntityById(entityName, id) {
+  const schema = xmlSchemaService.getEntitySchema(entityName);
+  if (!schema) throw new Error(`Unknown entity '${entityName}' in XML schema`);
+  return mongoService.findOneDocument(schema.collection, { [schema.primaryKey]: id });
+}
+
+/**
+ * Generic insert driven by XML schema validation and document building
+ */
+async function createEntity(entityName, rawData) {
+  const validation = xmlSchemaService.validateDocument(entityName, rawData);
+  if (!validation.isValid) {
+    throw new Error(`Validation failed for ${entityName}: ${validation.errors.join(', ')}`);
+  }
+
+  const schema = xmlSchemaService.getEntitySchema(entityName);
+  const doc = xmlSchemaService.buildMongoDocument(entityName, rawData);
+  const inserted = await mongoService.insertDocument(schema.collection, doc);
+
+  // If this entity is also a Neo4j graph entity, sync the node into Neo4j
+  const graphSchema = xmlSchemaService.getGraphEntitySchema(entityName);
+  if (graphSchema) {
+    try {
+      const nodeProps = xmlSchemaService.buildNeo4jNode(entityName, rawData);
+      await neo4jService.createNode(graphSchema.label, nodeProps);
+    } catch (graphErr) {
+      console.warn(`[Warning] Neo4j node sync skipped for ${entityName}: ${graphErr.message}`);
+    }
+  }
+
+  return inserted;
+}
+
+/**
+ * Generic update for any MongoDB entity defined in globalSchema.xml
+ */
+async function updateEntity(entityName, id, updates) {
+  const schema = xmlSchemaService.getEntitySchema(entityName);
+  if (!schema) throw new Error(`Unknown entity '${entityName}' in XML schema`);
+
+  const updatedDoc = await mongoService.updateDocument(schema.collection, { [schema.primaryKey]: id }, updates);
+
+  // Sync to Neo4j if graph entity exists
+  const graphSchema = xmlSchemaService.getGraphEntitySchema(entityName);
+  if (graphSchema && updatedDoc) {
+    try {
+      const nodeProps = xmlSchemaService.buildNeo4jNode(entityName, { ...updatedDoc, [graphSchema.keyProperty]: id });
+      await neo4jService.createNode(graphSchema.label, nodeProps);
+    } catch (graphErr) {
+      console.warn(`[Warning] Neo4j node update skipped for ${entityName}: ${graphErr.message}`);
+    }
+  }
+
+  return updatedDoc;
+}
+
+/**
+ * Generic delete for any MongoDB entity defined in globalSchema.xml
+ */
+async function deleteEntity(entityName, id) {
+  const schema = xmlSchemaService.getEntitySchema(entityName);
+  if (!schema) throw new Error(`Unknown entity '${entityName}' in XML schema`);
+
+  const deleted = await mongoService.deleteDocument(schema.collection, { [schema.primaryKey]: id });
+
+  // Delete from Neo4j if graph entity exists
+  const graphSchema = xmlSchemaService.getGraphEntitySchema(entityName);
+  if (graphSchema) {
+    try {
+      await neo4jService.runCypher(
+        `MATCH (n:${graphSchema.label} {${graphSchema.keyProperty}: $id}) DETACH DELETE n`,
+        { id }
+      );
+    } catch (graphErr) {
+      console.warn(`[Warning] Neo4j node delete skipped for ${entityName}: ${graphErr.message}`);
+    }
+  }
+
+  return deleted;
+}
+
+// ─────────────────────────────────────────────────────────
+//  DOMAIN-SPECIFIC WRAPPERS USING XML SCHEMA METADATA
+// ─────────────────────────────────────────────────────────
+
+// --- Players ---
+async function getAllPlayers(filters = {}) {
+  const schema = xmlSchemaService.getEntitySchema('Player');
+  const query = filters.sport ? { sport: filters.sport } : {};
+  return mongoService.findDocuments(schema.collection, query);
+}
+
+async function getPlayerById(playerId) {
+  return findEntityById('Player', playerId);
+}
+
+async function createPlayerDoc(doc) {
+  return createEntity('Player', doc);
+}
+
+async function updatePlayerDoc(playerId, updates) {
+  return updateEntity('Player', playerId, updates);
+}
+
+async function deletePlayerDoc(playerId) {
+  return deleteEntity('Player', playerId);
+}
+
+// --- Training Sessions ---
+async function getTrainingByPlayer(playerId) {
+  const schema = xmlSchemaService.getEntitySchema('TrainingSession');
+  const fk = schema.foreignKey || 'playerId';
+  return mongoService.findDocuments(schema.collection, { [fk]: playerId });
+}
+
+async function createTrainingDoc(doc) {
+  return createEntity('TrainingSession', doc);
+}
+
+async function updateTrainingDoc(sessionId, updates) {
+  return updateEntity('TrainingSession', sessionId, updates);
+}
+
+async function deleteTrainingDoc(sessionId) {
+  return deleteEntity('TrainingSession', sessionId);
+}
+
+// --- Tournaments ---
+async function getAllTournaments() {
+  const schema = xmlSchemaService.getEntitySchema('Tournament');
+  return mongoService.findDocuments(schema.collection, {});
+}
+
+async function getTournamentById(tournamentId) {
+  return findEntityById('Tournament', tournamentId);
+}
+
+async function createTournamentDoc(doc) {
+  return createEntity('Tournament', doc);
+}
+
+async function updateTournamentDoc(tournamentId, updates) {
+  return updateEntity('Tournament', tournamentId, updates);
+}
+
+async function deleteTournamentDoc(tournamentId) {
+  return deleteEntity('Tournament', tournamentId);
+}
+
+// --- Medical Records ---
+async function getMedicalRecordsByPlayer(playerId) {
+  const schema = xmlSchemaService.getEntitySchema('MedicalRecord');
+  const fk = schema.foreignKey || 'playerId';
+  return mongoService.findDocuments(schema.collection, { [fk]: playerId });
+}
+
+// --- Performance Records ---
+async function getPerformanceByPlayer(playerId) {
+  const schema = xmlSchemaService.getEntitySchema('PerformanceRecord');
+  return mongoService.findDocuments(schema.collection, { playerId });
+}
+
+async function getPerformanceByTournament(tournamentId) {
+  const schema = xmlSchemaService.getEntitySchema('PerformanceRecord');
+  return mongoService.findDocuments(schema.collection, { tournamentId });
+}
+
+// ─────────────────────────────────────────────────────────
+//  NEO4J GRAPH OPERATIONS DRIVEN BY XML SCHEMA
+// ─────────────────────────────────────────────────────────
+
+async function getPlayerRelationships(playerId) {
+  const playerGraph = xmlSchemaService.getGraphEntitySchema('Player');
+  try {
+    const records = await neo4jService.runCypher(
+      `
+      MATCH (p:${playerGraph.label} {${playerGraph.keyProperty}: $playerId})
+      OPTIONAL MATCH (p)-[:MEMBER_OF]->(t:Team)
+      OPTIONAL MATCH (p)-[:COACHED_BY]->(c:Coach)
+      OPTIONAL MATCH (p)-[:PLAYS]->(s:Sport)
+      OPTIONAL MATCH (p)-[:TRAINS_AT]->(tc:TrainingCenter)
+      RETURN
+        p.id AS playerId, p.name AS playerName,
+        t.id AS teamId, t.name AS teamName,
+        c.id AS coachId, c.name AS coachName,
+        s.id AS sportId, s.name AS sport,
+        tc.id AS trainingCenterId, tc.name AS trainingCenterName
+      `,
+      { playerId }
+    );
+    return records.length > 0 ? records[0] : null;
+  } catch (err) {
+    console.warn(`[Warning] getPlayerRelationships query error: ${err.message}`);
+    return null;
+  }
+}
+
+async function getPlayersByCoach(coachIdOrName) {
+  try {
+    return await neo4jService.getPlayersCoachedBy(coachIdOrName);
+  } catch (err) {
+    console.warn(`[Warning] getPlayersByCoach query error: ${err.message}`);
+    return [];
+  }
+}
+
+async function getTeamsByCoach(coachIdOrName) {
+  try {
+    return await neo4jService.getTeamsCoachedBy(coachIdOrName);
+  } catch (err) {
+    console.warn(`[Warning] getTeamsByCoach query error: ${err.message}`);
+    return [];
+  }
+}
+
+async function getPlayersByTeam(teamIdOrName) {
+  try {
+    return await neo4jService.getPlayersInTeam(teamIdOrName);
+  } catch (err) {
+    console.warn(`[Warning] getPlayersByTeam query error: ${err.message}`);
+    return [];
+  }
+}
+
+async function getTournamentPlayers(tournamentId) {
+  const rel = xmlSchemaService.getRelationshipSchema('PARTICIPATES_IN');
+  const tournamentGraph = xmlSchemaService.getGraphEntitySchema('Tournament');
+  const playerGraph = xmlSchemaService.getGraphEntitySchema('Player');
+
+  try {
+    return await neo4jService.runCypher(
+      `
+      MATCH (p:${playerGraph.label})-[:${rel.name}]->(t:${tournamentGraph.label} {${tournamentGraph.keyProperty}: $tournamentId})
+      RETURN p.id AS id, p.id AS playerId, p.name AS name, p.name AS playerName, p.sport AS sport
+      `,
+      { tournamentId }
+    );
+  } catch (err) {
+    console.warn(`[Warning] getTournamentPlayers query error: ${err.message}`);
+    return [];
+  }
+}
+
+async function getTournamentTeams(tournamentId) {
+  const rel = xmlSchemaService.getRelationshipSchema('PARTICIPATES_IN');
+  const tournamentGraph = xmlSchemaService.getGraphEntitySchema('Tournament');
+  const teamGraph = xmlSchemaService.getGraphEntitySchema('Team');
+
+  try {
+    return await neo4jService.runCypher(
+      `
+      MATCH (t:${teamGraph.label})-[:${rel.name}]->(tr:${tournamentGraph.label} {${tournamentGraph.keyProperty}: $tournamentId})
+      RETURN t.id AS id, t.id AS teamId, t.name AS name, t.name AS teamName, t.sport AS sport
+      `,
+      { tournamentId }
+    );
+  } catch (err) {
+    console.warn(`[Warning] getTournamentTeams query error: ${err.message}`);
+    return [];
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+//  CROSS-DATABASE OPERATIONS (Neo4j Graph + MongoDB Docs)
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Merges full MongoDB player profile with Neo4j graph relationships
  */
 async function getPlayerFull(playerId) {
-  // Step 1: XML lookup — Player entity → MongoDB
-  const { collection: playerCollection } = xmlSchemaService.getEntityStorage('Player');
+  const playerEntity = xmlSchemaService.getEntitySchema('Player');
 
-  // Step 2: XML lookup — Player graph entity + all relationship types → Neo4j
-  const playerGraph = xmlSchemaService.getGraphEntityStorage('Player');
-
-  // Step 3: MongoDB — fetch full profile
-  const profile = await mongoService.findOneDocument(playerCollection, { _id: playerId });
+  const profile = await mongoService.findOneDocument(playerEntity.collection, { [playerEntity.primaryKey]: playerId });
   if (!profile) return null;
 
-  // Step 4: Neo4j — fetch graph relationships
-  const graphData = await getPlayerRelationships(playerId);
+  let graphData = null;
+  try {
+    graphData = await getPlayerRelationships(playerId);
+  } catch (err) {
+    console.warn(`[Warning] Failed to fetch graph relationships for player ${playerId}: ${err.message}`);
+  }
 
-  // Step 5: Merge
   return {
     ...profile,
     graph: graphData
@@ -200,36 +316,35 @@ async function getPlayerFull(playerId) {
 }
 
 /**
- * GET /api/coaches/:id/training
- * Neo4j:   find all players coached by this coach (via COACHES → Team → MEMBER_OF → Player)
- * MongoDB: fetch training sessions for those player IDs
- * Merges player graph info + training documents.
+ * Cross-DB query: Finds players coached by coach in Neo4j, then fetches their training sessions from MongoDB
  */
 async function getCoachPlayerTraining(coachIdOrName) {
-  // Step 1: XML lookup — which DB handles COACHES relationship?
-  const coachesRel = xmlSchemaService.getRelationshipStorage('COACHES');
-  const memberOfRel = xmlSchemaService.getRelationshipStorage('MEMBER_OF');
-  const trainingEntity = xmlSchemaService.getEntityStorage('TrainingSession');
+  const coachesRel = xmlSchemaService.getRelationshipSchema('COACHES');
+  const memberOfRel = xmlSchemaService.getRelationshipSchema('MEMBER_OF');
+  const trainingEntity = xmlSchemaService.getEntitySchema('TrainingSession');
 
-  console.log(`[QueryService] getCoachPlayerTraining`);
-  console.log(`  → Neo4j: relationship '${coachesRel.name}' (${coachesRel.from} → ${coachesRel.to})`);
-  console.log(`  → Neo4j: relationship '${memberOfRel.name}' (${memberOfRel.from} → ${memberOfRel.to})`);
-  console.log(`  → MongoDB: entity 'TrainingSession' in collection '${trainingEntity.collection}'`);
+  console.log(`[QueryService] getCoachPlayerTraining:`);
+  console.log(`  → Neo4j: Traversing relationships '${coachesRel.name}' & '${memberOfRel.name}'`);
+  console.log(`  → MongoDB: Querying collection '${trainingEntity.collection}' by foreignKey '${trainingEntity.foreignKey}'`);
 
-  // Step 2: Neo4j — get players coached by this coach
-  const graphPlayers = await neo4jService.getPlayersCoachedBy(coachIdOrName);
-  if (!graphPlayers || graphPlayers.length === 0) return [];
+  let graphPlayers = [];
+  try {
+    graphPlayers = await neo4jService.getPlayersCoachedBy(coachIdOrName);
+  } catch (err) {
+    console.warn(`[Warning] Neo4j getPlayersCoachedBy error: ${err.message}`);
+  }
+
+  if (!graphPlayers || graphPlayers.length === 0) {
+    // If Neo4j is offline or has no data, return empty list gracefully
+    return [];
+  }
 
   const playerIds = graphPlayers.map(p => p.playerId);
-  console.log(`  → Retrieved ${playerIds.length} player IDs from Neo4j: [${playerIds.join(', ')}]`);
 
-  // Step 3: MongoDB — get training sessions for those players
   const trainingSessions = await mongoService.findDocuments(trainingEntity.collection, {
-    playerId: { $in: playerIds }
+    [trainingEntity.foreignKey || 'playerId']: { $in: playerIds }
   });
-  console.log(`  → Retrieved ${trainingSessions.length} training sessions from MongoDB`);
 
-  // Step 4: Merge — join on playerId
   return graphPlayers.map(player => ({
     playerId: player.playerId,
     playerName: player.playerName,
@@ -237,7 +352,7 @@ async function getCoachPlayerTraining(coachIdOrName) {
     team: player.teamName || null,
     coachName: player.coachName || coachIdOrName,
     trainingSessions: trainingSessions
-      .filter(ts => ts.playerId === player.playerId)
+      .filter(ts => ts[trainingEntity.foreignKey || 'playerId'] === player.playerId)
       .map(ts => ({
         sessionId: ts._id,
         date: ts.date,
@@ -250,32 +365,28 @@ async function getCoachPlayerTraining(coachIdOrName) {
 }
 
 /**
- * GET /api/coaches/:id/players  (with full MongoDB profile merged in)
- * Neo4j:   players coached by coach
- * MongoDB: full player profile for each
+ * Cross-DB query: Finds coached players in Neo4j and merges their full MongoDB documents
  */
 async function getCoachPlayersWithProfiles(coachIdOrName) {
-  const playerEntity = xmlSchemaService.getEntityStorage('Player');
-  const coachesRel = xmlSchemaService.getRelationshipStorage('COACHES');
+  const playerEntity = xmlSchemaService.getEntitySchema('Player');
 
-  console.log(`[QueryService] getCoachPlayersWithProfiles`);
-  console.log(`  → Neo4j: relationship '${coachesRel.name}'`);
-  console.log(`  → MongoDB: collection '${playerEntity.collection}'`);
+  let graphPlayers = [];
+  try {
+    graphPlayers = await neo4jService.getPlayersCoachedBy(coachIdOrName);
+  } catch (err) {
+    console.warn(`[Warning] Neo4j getPlayersCoachedBy error: ${err.message}`);
+  }
 
-  // Neo4j: get player IDs + basic graph data
-  const graphPlayers = await neo4jService.getPlayersCoachedBy(coachIdOrName);
   if (!graphPlayers || graphPlayers.length === 0) return [];
 
   const playerIds = graphPlayers.map(p => p.playerId);
 
-  // MongoDB: get full profiles
   const profiles = await mongoService.findDocuments(playerEntity.collection, {
-    _id: { $in: playerIds }
+    [playerEntity.primaryKey]: { $in: playerIds }
   });
 
-  // Merge
   return graphPlayers.map(gp => {
-    const profile = profiles.find(p => p._id === gp.playerId) || {};
+    const profile = profiles.find(p => p[playerEntity.primaryKey] === gp.playerId) || {};
     return {
       ...profile,
       team: gp.teamName || null,
@@ -285,7 +396,14 @@ async function getCoachPlayersWithProfiles(coachIdOrName) {
 }
 
 module.exports = {
-  // MongoDB-only
+  // Generic XML-driven
+  findEntities,
+  findEntityById,
+  createEntity,
+  updateEntity,
+  deleteEntity,
+
+  // MongoDB entities
   getAllPlayers,
   getPlayerById,
   createPlayerDoc,
@@ -304,7 +422,7 @@ module.exports = {
   getPerformanceByPlayer,
   getPerformanceByTournament,
 
-  // Neo4j-only
+  // Neo4j graph
   getPlayerRelationships,
   getPlayersByCoach,
   getTeamsByCoach,
@@ -312,7 +430,7 @@ module.exports = {
   getTournamentPlayers,
   getTournamentTeams,
 
-  // Cross-database
+  // Cross-DB
   getPlayerFull,
   getCoachPlayerTraining,
   getCoachPlayersWithProfiles

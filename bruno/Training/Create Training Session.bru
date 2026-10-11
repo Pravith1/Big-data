@@ -1,0 +1,44 @@
+meta {
+  name: Create Training Session
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/training/createTrainingSession
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "_id": "TS9999",
+    "playerId": "P101",
+    "date": "2026-10-11",
+    "durationMinutes": 90,
+    "metrics": {
+      "distanceKm": 7.5,
+      "steps": 10500,
+      "calories": 750,
+      "averageHeartRate": 135,
+      "maximumHeartRate": 170
+    },
+    "fitnessScore": 8.5,
+    "coachFeedback": "Superb pace and stamina."
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.success: eq true
+  res.body.data._id: eq TS9999
+}
+
+tests {
+  test("creates training session validated via XML schema", function() {
+    expect(res.getStatus()).to.equal(201);
+    const body = res.getBody();
+    expect(body.success).to.be.true;
+    expect(body.data._id).to.equal('TS9999');
+  });
+}
