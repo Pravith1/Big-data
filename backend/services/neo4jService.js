@@ -62,48 +62,28 @@ async function createRelationship(fromLabel, fromId, relType, toLabel, toId, rel
   return result.length > 0 ? result[0] : null;
 }
 
-async function getPlayersCoachedBy(coachNameOrId) {
+async function getPlayersCoachedBy(coachId) {
   const query = `
-    MATCH (c:Coach)
-    WHERE c.name = $coachParam OR c.id = $coachParam
-    OPTIONAL MATCH (c)-[:COACHES]->(t:Team)<-[:MEMBER_OF]-(p:Player)
-    OPTIONAL MATCH (p)-[:COACHED_BY]->(c)
-    WITH DISTINCT p, t, c
-    WHERE p IS NOT NULL
-    RETURN p.id AS id, p.id AS playerId, p.name AS name, p.name AS playerName, p.sport AS sport, t.id AS teamId, t.name AS teamName, c.name AS coachName
+    MATCH (c:Coach {id: $coachId})-[:COACHES]->(t:Team)<-[:MEMBER_OF]-(p:Player)
+    RETURN DISTINCT p.id AS playerId, t.id AS teamId, c.id AS coachId
   `;
-  return await runCypher(query, { coachParam: coachNameOrId });
+  return await runCypher(query, { coachId });
 }
 
-async function getPlayersInTeam(teamIdOrName) {
+async function getPlayersInTeam(teamId) {
   const query = `
-    MATCH (t:Team)
-    WHERE t.id = $teamParam OR t.name = $teamParam
-    MATCH (p:Player)-[:MEMBER_OF]->(t)
-    RETURN p.id AS id, p.id AS playerId, p.name AS name, p.name AS playerName, p.sport AS sport, t.id AS teamId, t.name AS teamName
+    MATCH (p:Player)-[:MEMBER_OF]->(t:Team {id: $teamId})
+    RETURN p.id AS playerId, t.id AS teamId
   `;
-  return await runCypher(query, { teamParam: teamIdOrName });
+  return await runCypher(query, { teamId });
 }
 
-async function getTeamsCoachedBy(coachNameOrId) {
+async function getTeamsCoachedBy(coachId) {
   const query = `
-    MATCH (c:Coach)
-    WHERE c.name = $coachParam OR c.id = $coachParam
-    MATCH (c)-[:COACHES]->(t:Team)
-    RETURN t.id AS id, t.id AS teamId, t.name AS name, t.name AS teamName,
-           coalesce(
-             t.sport,
-             CASE
-               WHEN toLower(t.name) CONTAINS 'football' THEN 'Football'
-               WHEN toLower(t.name) CONTAINS 'cricket' THEN 'Cricket'
-               WHEN toLower(t.name) CONTAINS 'shuttler' OR toLower(t.name) CONTAINS 'badminton' THEN 'Badminton'
-               WHEN toLower(t.name) CONTAINS 'swim' OR toLower(t.name) CONTAINS 'aqua' THEN 'Swimming'
-               ELSE 'Football'
-             END
-           ) AS sport,
-           c.id AS coachId, c.name AS coachName
+    MATCH (c:Coach {id: $coachId})-[:COACHES]->(t:Team)
+    RETURN t.id AS teamId, c.id AS coachId
   `;
-  return await runCypher(query, { coachParam: coachNameOrId });
+  return await runCypher(query, { coachId });
 }
 
 module.exports = {

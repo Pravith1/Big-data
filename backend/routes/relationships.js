@@ -10,25 +10,14 @@ const relationshipController = require('../controllers/relationshipController');
 //   Creates: (Player)-[:MEMBER_OF]->(Team)
 router.post('/player-team', relationshipController.assignPlayerToTeam);
 
-// POST /api/relationships/player-coach
-//   Body: { playerId, coachId }
-//   Creates: (Player)-[:COACHED_BY]->(Coach)
-router.post('/player-coach', relationshipController.assignPlayerToCoach);
+
 
 // POST /api/relationships/coach-team
 //   Body: { coachId, teamId }
 //   Creates: (Coach)-[:COACHES]->(Team)
 router.post('/coach-team', relationshipController.assignCoachToTeam);
 
-// POST /api/relationships/player-sport
-//   Body: { playerId, sportId }
-//   Creates: (Player)-[:PLAYS]->(Sport)
-router.post('/player-sport', relationshipController.associatePlayerWithSport);
 
-// POST /api/relationships/player-tournament
-//   Body: { playerId, tournamentId }
-//   Creates: (Player)-[:PARTICIPATES_IN]->(Tournament)
-router.post('/player-tournament', relationshipController.addPlayerToTournament);
 
 // POST /api/relationships/team-tournament
 //   Body: { teamId, tournamentId }

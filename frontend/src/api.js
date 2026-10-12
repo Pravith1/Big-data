@@ -129,26 +129,10 @@ export const assignPlayerToTeam = (data) =>
     body: JSON.stringify(data)
   });
 
-export const assignPlayerToCoach = (data) =>
-  request('/relationships/player-coach', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
+
 
 export const assignCoachToTeam = (data) =>
   request('/relationships/coach-team', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-
-export const associatePlayerWithSport = (data) =>
-  request('/relationships/player-sport', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-
-export const addPlayerToTournament = (data) =>
-  request('/relationships/player-tournament', {
     method: 'POST',
     body: JSON.stringify(data)
   });

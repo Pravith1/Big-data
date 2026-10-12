@@ -5,12 +5,7 @@ const { getDriver } = require('../config/neo4j');
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
-const SPORTS = [
-  { id: 'SPORT01', name: 'Football' },
-  { id: 'SPORT02', name: 'Cricket' },
-  { id: 'SPORT03', name: 'Badminton' },
-  { id: 'SPORT04', name: 'Swimming' }
-];
+
 
 const TRAINING_CENTERS = [
   { id: 'TC01', name: 'Bangalore High Performance Center', city: 'Bangalore' },
@@ -19,16 +14,16 @@ const TRAINING_CENTERS = [
 ];
 
 const COACHES = [
-  { id: 'C101', name: 'Rahul' },
-  { id: 'C102', name: 'Meena' },
-  { id: 'C103', name: 'Suresh' }
+  { _id: 'C101', name: 'Rahul Sharma', sport: 'Football', role: 'Head Coach', experienceYears: 12 },
+  { _id: 'C102', name: 'Meena Iyer', sport: 'Badminton', role: 'High Performance Coach', experienceYears: 9 },
+  { _id: 'C103', name: 'Suresh Menon', sport: 'Swimming', role: 'Aquatic Director', experienceYears: 15 }
 ];
 
 const TEAMS = [
-  { id: 'TEAM01', name: 'National Football Team', sport: 'Football' },
-  { id: 'TEAM02', name: 'Chennai Cricket Academy', sport: 'Cricket' },
-  { id: 'TEAM03', name: 'Bangalore Shuttlers', sport: 'Badminton' },
-  { id: 'TEAM04', name: 'Aqua Swim Club', sport: 'Swimming' }
+  { _id: 'TEAM01', name: 'National Football Squad', sport: 'Football', category: 'Senior National' },
+  { _id: 'TEAM02', name: 'Chennai Cricket Academy', sport: 'Cricket', category: 'First Class' },
+  { _id: 'TEAM03', name: 'Bangalore Shuttlers', sport: 'Badminton', category: 'Elite Circuit' },
+  { _id: 'TEAM04', name: 'Aqua Swim Club', sport: 'Swimming', category: 'Aquatics Division' }
 ];
 
 const TOURNAMENTS = [
@@ -85,6 +80,8 @@ async function seedMongo() {
 
   const collections = {
     players: PLAYERS,
+    coaches: COACHES,
+    teams: TEAMS,
     training_sessions: TRAINING_SESSIONS,
     medical_records: MEDICAL_RECORDS,
     tournaments: TOURNAMENTS,
@@ -108,53 +105,47 @@ async function seedNeo4j() {
   const results = {};
 
   try {
-    // Clear existing nodes
+    // Clear existing nodes and relationships
     await session.run('MATCH (n) DETACH DELETE n');
 
-    // Create Sports
-    for (const s of SPORTS) {
-      await session.run('CREATE (:Sport {id: $id, name: $name})', s);
-    }
-    results.sports = SPORTS.length;
-
-    // Create Training Centers
+    // Create Training Centers (graph nodes only - id)
     for (const tc of TRAINING_CENTERS) {
-      await session.run('CREATE (:TrainingCenter {id: $id, name: $name, city: $city})', tc);
+      await session.run('CREATE (:TrainingCenter {id: $id})', { id: tc.id });
     }
     results.trainingCenters = TRAINING_CENTERS.length;
 
-    // Create Coaches
+    // Create Coaches (graph nodes only - id)
     for (const c of COACHES) {
-      await session.run('CREATE (:Coach {id: $id, name: $name})', c);
+      await session.run('CREATE (:Coach {id: $id})', { id: c._id });
     }
     results.coaches = COACHES.length;
 
-    // Create Teams
+    // Create Teams (graph nodes only - id)
     for (const t of TEAMS) {
-      await session.run('CREATE (:Team {id: $id, name: $name, sport: $sport})', t);
+      await session.run('CREATE (:Team {id: $id})', { id: t._id });
     }
     results.teams = TEAMS.length;
 
-    // Create Tournaments
+    // Create Tournaments (graph nodes only - id)
     for (const t of TOURNAMENTS) {
-      await session.run('CREATE (:Tournament {id: $id, name: $name})', { id: t._id, name: t.name });
+      await session.run('CREATE (:Tournament {id: $id})', { id: t._id });
     }
     results.tournaments = TOURNAMENTS.length;
 
-    // Create Players (graph nodes only — id and name)
+    // Create Players (graph nodes only - id)
     for (const p of PLAYERS) {
-      await session.run('CREATE (:Player {id: $id, name: $name, sport: $sport})', { id: p._id, name: p.name, sport: p.sport });
+      await session.run('CREATE (:Player {id: $id})', { id: p._id });
     }
     results.players = PLAYERS.length;
 
-    // ── Relationships ──────────────────────────────────────────────
+    // ── Relationships (Maintained strictly in Neo4j) ───────────────
 
     // Coach COACHES Team
     const coachTeam = [
-      { coachId: 'C101', teamId: 'TEAM01' }, // Rahul → Football
-      { coachId: 'C101', teamId: 'TEAM02' }, // Rahul → Cricket
-      { coachId: 'C102', teamId: 'TEAM03' }, // Meena → Badminton
-      { coachId: 'C103', teamId: 'TEAM04' }  // Suresh → Swimming
+      { coachId: 'C101', teamId: 'TEAM01' }, // Rahul Sharma → National Football Squad
+      { coachId: 'C101', teamId: 'TEAM02' }, // Rahul Sharma → Chennai Cricket Academy
+      { coachId: 'C102', teamId: 'TEAM03' }, // Meena Iyer → Bangalore Shuttlers
+      { coachId: 'C103', teamId: 'TEAM04' }  // Suresh Menon → Aqua Swim Club
     ];
     for (const r of coachTeam) {
       await session.run(
@@ -179,46 +170,6 @@ async function seedNeo4j() {
     for (const r of playerTeam) {
       await session.run(
         'MATCH (p:Player {id: $playerId}) MATCH (t:Team {id: $teamId}) CREATE (p)-[:MEMBER_OF]->(t)',
-        r
-      );
-    }
-
-    // Player COACHED_BY Coach
-    const playerCoach = [
-      { playerId: 'P101', coachId: 'C101' },
-      { playerId: 'P102', coachId: 'C101' },
-      { playerId: 'P103', coachId: 'C101' },
-      { playerId: 'P104', coachId: 'C101' },
-      { playerId: 'P105', coachId: 'C101' },
-      { playerId: 'P106', coachId: 'C101' },
-      { playerId: 'P107', coachId: 'C102' },
-      { playerId: 'P108', coachId: 'C102' },
-      { playerId: 'P109', coachId: 'C103' },
-      { playerId: 'P110', coachId: 'C103' }
-    ];
-    for (const r of playerCoach) {
-      await session.run(
-        'MATCH (p:Player {id: $playerId}) MATCH (c:Coach {id: $coachId}) CREATE (p)-[:COACHED_BY]->(c)',
-        r
-      );
-    }
-
-    // Player PLAYS Sport
-    const playerSport = [
-      { playerId: 'P101', sportId: 'SPORT01' },
-      { playerId: 'P102', sportId: 'SPORT01' },
-      { playerId: 'P103', sportId: 'SPORT01' },
-      { playerId: 'P104', sportId: 'SPORT02' },
-      { playerId: 'P105', sportId: 'SPORT02' },
-      { playerId: 'P106', sportId: 'SPORT02' },
-      { playerId: 'P107', sportId: 'SPORT03' },
-      { playerId: 'P108', sportId: 'SPORT03' },
-      { playerId: 'P109', sportId: 'SPORT04' },
-      { playerId: 'P110', sportId: 'SPORT04' }
-    ];
-    for (const r of playerSport) {
-      await session.run(
-        'MATCH (p:Player {id: $playerId}) MATCH (s:Sport {id: $sportId}) CREATE (p)-[:PLAYS]->(s)',
         r
       );
     }
@@ -256,28 +207,11 @@ async function seedNeo4j() {
       );
     }
 
-    // Player PARTICIPATES_IN Tournament
-    const playerTournament = [
-      { playerId: 'P101', tournamentId: 'T501' },
-      { playerId: 'P102', tournamentId: 'T501' },
-      { playerId: 'P103', tournamentId: 'T501' },
-      { playerId: 'P104', tournamentId: 'T502' },
-      { playerId: 'P105', tournamentId: 'T502' }
-    ];
-    for (const r of playerTournament) {
-      await session.run(
-        'MATCH (p:Player {id: $playerId}) MATCH (t:Tournament {id: $tournamentId}) CREATE (p)-[:PARTICIPATES_IN]->(t)',
-        r
-      );
-    }
-
     results.relationships = {
       COACHES: coachTeam.length,
       MEMBER_OF: playerTeam.length,
-      COACHED_BY: playerCoach.length,
-      PLAYS: playerSport.length,
       TRAINS_AT: playerTC.length,
-      PARTICIPATES_IN: teamTournament.length + playerTournament.length
+      PARTICIPATES_IN: teamTournament.length
     };
 
     return results;

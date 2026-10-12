@@ -24,6 +24,27 @@
         </fields>
     </entity>
 
+    <entity name="Coach">
+        <storage database="mongodb" collection="coaches" primaryKey="_id"/>
+        <fields>
+            <field name="_id" type="string" required="true" primaryKey="true" description="Unique Coach ID (e.g. C101)"/>
+            <field name="name" type="string" required="true" description="Full name of the coach"/>
+            <field name="sport" type="string" required="false" default="Football"/>
+            <field name="role" type="string" required="false" default="Head Coach"/>
+            <field name="experienceYears" type="number" required="false" default="10"/>
+        </fields>
+    </entity>
+
+    <entity name="Team">
+        <storage database="mongodb" collection="teams" primaryKey="_id"/>
+        <fields>
+            <field name="_id" type="string" required="true" primaryKey="true" description="Unique Team ID (e.g. TEAM01)"/>
+            <field name="name" type="string" required="true" description="Name of the team"/>
+            <field name="sport" type="string" required="false" default="Football"/>
+            <field name="category" type="string" required="false" default="Senior"/>
+        </fields>
+    </entity>
+
     <entity name="TrainingSession">
         <storage database="mongodb" collection="training_sessions" primaryKey="_id" foreignKey="playerId"/>
         <fields>
@@ -91,16 +112,14 @@
 
     <!-- ================================================================= -->
     <!-- Neo4j Graph Entities (Nodes)                                      -->
-    <!-- Defines graph node labels, key property, and properties           -->
+    <!-- Nodes store only their label and MongoDB reference key (id)       -->
+    <!-- All data attributes are managed in MongoDB                        -->
     <!-- ================================================================= -->
 
     <graphEntity name="Player">
         <storage database="neo4j" label="Player" keyProperty="id"/>
         <properties>
             <property name="id" type="string" required="true" key="true"/>
-            <property name="name" type="string" required="true"/>
-            <property name="sport" type="string" required="false"/>
-            <property name="age" type="number" required="false"/>
         </properties>
     </graphEntity>
 
@@ -108,7 +127,6 @@
         <storage database="neo4j" label="Coach" keyProperty="id"/>
         <properties>
             <property name="id" type="string" required="true" key="true"/>
-            <property name="name" type="string" required="true"/>
         </properties>
     </graphEntity>
 
@@ -116,15 +134,6 @@
         <storage database="neo4j" label="Team" keyProperty="id"/>
         <properties>
             <property name="id" type="string" required="true" key="true"/>
-            <property name="name" type="string" required="true"/>
-        </properties>
-    </graphEntity>
-
-    <graphEntity name="Sport">
-        <storage database="neo4j" label="Sport" keyProperty="id"/>
-        <properties>
-            <property name="id" type="string" required="true" key="true"/>
-            <property name="name" type="string" required="true"/>
         </properties>
     </graphEntity>
 
@@ -132,8 +141,6 @@
         <storage database="neo4j" label="TrainingCenter" keyProperty="id"/>
         <properties>
             <property name="id" type="string" required="true" key="true"/>
-            <property name="name" type="string" required="true"/>
-            <property name="city" type="string" required="false"/>
         </properties>
     </graphEntity>
 
@@ -141,13 +148,13 @@
         <storage database="neo4j" label="Tournament" keyProperty="id"/>
         <properties>
             <property name="id" type="string" required="true" key="true"/>
-            <property name="name" type="string" required="true"/>
         </properties>
     </graphEntity>
 
 
     <!-- ================================================================= -->
     <!-- Neo4j Graph Relationships                                         -->
+    <!-- All organizational relationships are maintained in Neo4j          -->
     <!-- ================================================================= -->
 
     <relationship name="MEMBER_OF" from="Player" to="Team">
@@ -158,27 +165,13 @@
         <storage database="neo4j"/>
     </relationship>
 
-    <relationship name="COACHED_BY" from="Player" to="Coach">
-        <storage database="neo4j"/>
-    </relationship>
 
-    <relationship name="PLAYS" from="Player" to="Sport">
-        <storage database="neo4j"/>
-    </relationship>
 
     <relationship name="TRAINS_AT" from="Player" to="TrainingCenter">
         <storage database="neo4j"/>
     </relationship>
 
     <relationship name="PARTICIPATES_IN" from="Team" to="Tournament">
-        <storage database="neo4j"/>
-    </relationship>
-
-    <relationship name="PARTICIPATES_IN" from="Player" to="Tournament">
-        <storage database="neo4j"/>
-    </relationship>
-
-    <relationship name="HELD_AT" from="Tournament" to="TrainingCenter">
         <storage database="neo4j"/>
     </relationship>
 

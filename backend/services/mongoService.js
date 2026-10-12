@@ -2,6 +2,9 @@ const { getDb } = require('../config/mongodb');
 
 async function getCollection(collectionName) {
   const db = await getDb();
+  if (!db) {
+    throw new Error(`MongoDB connection unavailable: cannot access collection '${collectionName}'`);
+  }
   return db.collection(collectionName);
 }
 

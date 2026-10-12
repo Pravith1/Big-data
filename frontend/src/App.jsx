@@ -25,10 +25,7 @@ import {
   updateTrainingSession,
   deleteTrainingSession,
   assignPlayerToTeam,
-  assignPlayerToCoach,
   assignCoachToTeam,
-  associatePlayerWithSport,
-  addPlayerToTournament,
   addTeamToTournament
 } from './api';
 
@@ -453,15 +450,9 @@ export default function App() {
       if (relFormType === 'player-team') {
         await assignPlayerToTeam({ playerId: relPlayerId, teamId: relTeamId });
         showNotification(`AFFILIATION CREATED: ${pName} joined ${tName}`, 'success');
-      } else if (relFormType === 'player-coach') {
-        await assignPlayerToCoach({ playerId: relPlayerId, coachId: relCoachId });
-        showNotification(`COACH ASSIGNED: ${pName} is now mentored by ${cName}`, 'success');
       } else if (relFormType === 'coach-team') {
         await assignCoachToTeam({ coachId: relCoachId, teamId: relTeamId });
         showNotification(`TEAM LEADERSHIP: ${cName} assigned to lead ${tName}`, 'success');
-      } else if (relFormType === 'player-tournament') {
-        await addPlayerToTournament({ playerId: relPlayerId, tournamentId: relTournamentId });
-        showNotification(`REGISTRATION: ${pName} entered into ${trnName}`, 'success');
       } else if (relFormType === 'team-tournament') {
         await addTeamToTournament({ teamId: relTeamId, tournamentId: relTournamentId });
         showNotification(`REGISTRATION: ${tName} registered for ${trnName}`, 'success');
@@ -537,10 +528,8 @@ export default function App() {
     const tName = t?.name || 'Selected Team';
     const trnName = trn?.name || 'Selected Tournament';
 
-    if (relFormType === 'player-team') return `${pName} will be enrolled as an active roster member of ${tName}.`;
-    if (relFormType === 'player-coach') return `${pName} will be coached and guided by ${cName}.`;
+    if (relFormType === 'player-team') return `${pName} will be enrolled as an active roster member of ${tName}. Head coach will mentor them through the team.`;
     if (relFormType === 'coach-team') return `${cName} will assume head coaching duties for ${tName}.`;
-    if (relFormType === 'player-tournament') return `${pName} will be entered as a competing athlete in ${trnName}.`;
     if (relFormType === 'team-tournament') return `${tName} will enter as a participating team in ${trnName}.`;
     return 'Confirm connection parameters.';
   }
@@ -730,6 +719,9 @@ export default function App() {
                           <span className="brutal-badge">{p.position || 'Player'}</span>
                           <span className="brutal-badge">AGE: {p.age || '-'}</span>
                           <span className="brutal-badge">{p.gender || '-'}</span>
+                          {(p.teamName || p.team) && (
+                            <span className="brutal-badge brutal-badge-accent">{p.teamName || p.team}</span>
+                          )}
                         </div>
 
                         <div style={{ fontSize: '12px', color: 'var(--concrete-dark)', marginTop: '4px' }}>
@@ -1270,14 +1262,15 @@ export default function App() {
                         className="brutal-select"
                       >
                         <option value="player-team">Athlete Joins Team</option>
-                        <option value="player-coach">Assign Coach to Athlete</option>
                         <option value="coach-team">Assign Coach to Lead Team</option>
-                        <option value="player-tournament">Register Athlete in Tournament</option>
                         <option value="team-tournament">Register Team in Tournament</option>
                       </select>
+                      <div style={{ fontSize: '11px', color: 'var(--concrete-dark)', marginTop: '4px' }}>
+                        * Coach-athlete mentorship is established via team affiliation. When an athlete joins a team, the team's head coach automatically mentors them.
+                      </div>
                     </div>
 
-                    {(relFormType === 'player-team' || relFormType === 'player-coach' || relFormType === 'player-tournament') && (
+                    {relFormType === 'player-team' && (
                       <div className="brutal-form-group">
                         <label className="brutal-label">SELECT ATHLETE</label>
                         <select
@@ -1295,7 +1288,7 @@ export default function App() {
                       </div>
                     )}
 
-                    {(relFormType === 'player-coach' || relFormType === 'coach-team') && (
+                    {relFormType === 'coach-team' && (
                       <div className="brutal-form-group">
                         <label className="brutal-label">SELECT COACH</label>
                         <select
@@ -1331,7 +1324,7 @@ export default function App() {
                       </div>
                     )}
 
-                    {(relFormType === 'player-tournament' || relFormType === 'team-tournament') && (
+                    {relFormType === 'team-tournament' && (
                       <div className="brutal-form-group">
                         <label className="brutal-label">SELECT TOURNAMENT</label>
                         <select
@@ -1480,9 +1473,9 @@ export default function App() {
                     <div className="brutal-card" style={{ padding: '14px' }}>
                       <div className="brutal-label" style={{ marginBottom: '8px' }}>AFFILIATIONS & MENTORS</div>
                       <div style={{ fontSize: '13px', lineHeight: 1.8 }}>
-                        <div>AFFILIATED TEAM: <strong>{fullProfileData.relationships?.teamName || fullProfileData.relationships?.team?.name || fullProfileData.teamName || fullProfileData.team || 'None assigned'}</strong></div>
-                        <div>PRIMARY COACH: <strong>{fullProfileData.relationships?.coachName || fullProfileData.relationships?.coach?.name || fullProfileData.coachName || fullProfileData.coach || 'None assigned'}</strong></div>
-                        <div>TRAINING CENTER: <strong>{fullProfileData.relationships?.trainingCenterName || fullProfileData.relationships?.trainingCenter?.name || 'Main Academy'}</strong></div>
+                        <div>AFFILIATED TEAM: <strong>{fullProfileData.graph?.team?.name || fullProfileData.relationships?.teamName || fullProfileData.relationships?.team?.name || fullProfileData.teamName || fullProfileData.team || 'None assigned'}</strong></div>
+                        <div>PRIMARY COACH: <strong>{fullProfileData.graph?.coach?.name || fullProfileData.relationships?.coachName || fullProfileData.relationships?.coach?.name || fullProfileData.coachName || fullProfileData.coach || 'None assigned'}</strong></div>
+                        <div>TRAINING CENTER: <strong>{fullProfileData.graph?.trainingCenter?.name || fullProfileData.relationships?.trainingCenterName || fullProfileData.relationships?.trainingCenter?.name || fullProfileData.trainingCenterName || 'Main Academy'}</strong></div>
                       </div>
                     </div>
                   </div>

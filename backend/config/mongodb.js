@@ -19,18 +19,27 @@ async function connectMongo() {
   if (!isUriValid(uri)) {
     throw new Error('MONGO_URI is missing or contains unreplaced placeholder <db_password>');
   }
-  if (!client) {
-    client = new MongoClient(uri);
+  try {
+    if (!client) {
+      client = new MongoClient(uri);
+    }
     await client.connect();
     db = client.db(dbName);
     console.log(`Connected successfully to MongoDB database: ${dbName}`);
+    return db;
+  } catch (err) {
+    client = null;
+    db = null;
+    throw err;
   }
-  return db;
 }
 
 async function getDb() {
   if (!db) {
-    return await connectMongo();
+    await connectMongo();
+  }
+  if (!db) {
+    throw new Error(`MongoDB connection unavailable for database: ${dbName}`);
   }
   return db;
 }

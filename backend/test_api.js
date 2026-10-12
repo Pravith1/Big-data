@@ -53,7 +53,7 @@ async function runTests() {
   await check('GET /api/players/getAllPlayers', '/api/players/getAllPlayers', {}, 200, d => Array.isArray(d.data) && d.data.length > 0);
   await check('GET /players/getAllPlayers (Root Alias)', '/players/getAllPlayers', {}, 200, d => Array.isArray(d.data) && d.data.length > 0);
   await check('GET /api/players/getPlayerById/P101', '/api/players/getPlayerById/P101', {}, 200, d => d.data && d.data._id === 'P101');
-  await check('GET /api/players/getPlayerFull/P101', '/api/players/getPlayerFull/P101', {}, 200, d => d.data && d.data._id === 'P101');
+  await check('GET /api/players/getPlayerFull/P101', '/api/players/getPlayerFull/P101', {}, 200, d => d.data && d.data._id === 'P101' && d.data.teamName && d.data.coachName);
   await check('GET /api/players/getPlayerTraining/P101', '/api/players/getPlayerTraining/P101', {}, 200, d => Array.isArray(d.data));
 
   // 5. Coach Player Training (User explicit requirement)
@@ -101,6 +101,25 @@ async function runTests() {
 
   // 10. Teams
   await check('GET /api/teams/TEAM01/players', '/api/teams/TEAM01/players', {}, 200, d => Array.isArray(d.data));
+
+  // 11. Relationships (Neo4j Graph)
+  await check('POST /api/relationships/player-team', '/api/relationships/player-team', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerId: 'P101', teamId: 'TEAM01' })
+  }, 200, d => d.success);
+
+  await check('POST /api/relationships/coach-team', '/api/relationships/coach-team', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ coachId: 'C101', teamId: 'TEAM01' })
+  }, 200, d => d.success);
+
+  await check('POST /api/relationships/team-tournament', '/api/relationships/team-tournament', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamId: 'TEAM01', tournamentId: 'T501' })
+  }, 200, d => d.success);
 
   console.log(`\n==================================================`);
   console.log(`Results: ${passed} Passed, ${failed} Failed`);

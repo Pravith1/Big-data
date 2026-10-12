@@ -45,16 +45,40 @@ router.get('/neo4j/overview', async (req, res) => {
       'MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS count ORDER BY type'
     ).catch(() => []);
 
-    const players = await neo4jService.runCypher(
+    const graphPlayers = await neo4jService.runCypher(
       `
       MATCH (p:Player)
       OPTIONAL MATCH (p)-[:MEMBER_OF]->(t:Team)
       OPTIONAL MATCH (p)-[:COACHED_BY]->(c:Coach)
-      RETURN p.id AS playerId, p.name AS name, p.sport AS sport,
-             t.name AS team, c.name AS coach
+      RETURN p.id AS playerId, t.id AS teamId, c.id AS coachId
       ORDER BY playerId
       `
     ).catch(() => []);
+
+    const playerIds = graphPlayers.map(p => p.playerId).filter(Boolean);
+    const teamIds = [...new Set(graphPlayers.map(p => p.teamId).filter(Boolean))];
+    const coachIds = [...new Set(graphPlayers.map(p => p.coachId).filter(Boolean))];
+
+    const playerDocs = await mongoService.findDocuments('players', { _id: { $in: playerIds } }).catch(() => []);
+    const teamDocs = await mongoService.findDocuments('teams', { _id: { $in: teamIds } }).catch(() => []);
+    const coachDocs = await mongoService.findDocuments('coaches', { _id: { $in: coachIds } }).catch(() => []);
+
+    const playerMap = new Map(playerDocs.map(p => [p._id, p]));
+    const teamMap = new Map(teamDocs.map(t => [t._id, t]));
+    const coachMap = new Map(coachDocs.map(c => [c._id, c]));
+
+    const players = graphPlayers.map(gp => {
+      const pDoc = playerMap.get(gp.playerId) || {};
+      const tDoc = teamMap.get(gp.teamId) || {};
+      const cDoc = coachMap.get(gp.coachId) || {};
+      return {
+        playerId: gp.playerId,
+        name: pDoc.name || gp.playerId,
+        sport: pDoc.sport || tDoc.sport || null,
+        team: tDoc.name || null,
+        coach: cDoc.name || null
+      };
+    });
 
     res.json({
       labels,

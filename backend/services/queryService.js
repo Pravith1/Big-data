@@ -107,7 +107,50 @@ async function deleteEntity(entityName, id) {
 async function getAllPlayers(filters = {}) {
   const schema = xmlSchemaService.getEntitySchema('Player');
   const query = filters.sport ? { sport: filters.sport } : {};
-  return mongoService.findDocuments(schema.collection, query);
+  const players = await mongoService.findDocuments(schema.collection, query);
+
+  try {
+    const rels = await neo4jService.runCypher(`
+      MATCH (p:Player)
+      OPTIONAL MATCH (p)-[:MEMBER_OF]->(t:Team)
+      OPTIONAL MATCH (c:Coach)-[:COACHES]->(t)
+      RETURN p.id AS playerId, t.id AS teamId, c.id AS coachId
+    `);
+    if (rels && rels.length > 0) {
+      const teamIds = [...new Set(rels.map(r => r.teamId).filter(Boolean))];
+      const coachIds = [...new Set(rels.map(r => r.coachId).filter(Boolean))];
+
+      const teamDocs = teamIds.length > 0 ? await mongoService.findDocuments('teams', { _id: { $in: teamIds } }) : [];
+      const coachDocs = coachIds.length > 0 ? await mongoService.findDocuments('coaches', { _id: { $in: coachIds } }) : [];
+
+      const teamMap = new Map(teamDocs.map(t => [t._id, t.name]));
+      const coachMap = new Map(coachDocs.map(c => [c._id, c.name]));
+
+      const relMap = new Map(rels.map(r => [r.playerId, {
+        teamId: r.teamId || null,
+        teamName: teamMap.get(r.teamId) || null,
+        coachId: r.coachId || null,
+        coachName: coachMap.get(r.coachId) || null
+      }]));
+
+      return players.map(p => {
+        const r = relMap.get(p._id) || {};
+        return {
+          ...p,
+          teamId: r.teamId || null,
+          teamName: r.teamName || null,
+          team: r.teamName || null,
+          coachId: r.coachId || null,
+          coachName: r.coachName || null,
+          coach: r.coachName || null
+        };
+      });
+    }
+  } catch (err) {
+    // Graceful fallback to pure mongo documents if graph error
+  }
+
+  return players;
 }
 
 async function getPlayerById(playerId) {
@@ -188,6 +231,30 @@ async function getPerformanceByTournament(tournamentId) {
 // ─────────────────────────────────────────────────────────
 //  NEO4J GRAPH OPERATIONS DRIVEN BY XML SCHEMA
 // ─────────────────────────────────────────────────────────
+//  NEO4J GRAPH OPERATIONS DRIVEN BY XML SCHEMA & ENRICHED BY MONGODB
+// ─────────────────────────────────────────────────────────
+
+const TRAINING_CENTERS_MAP = {
+  TC01: 'Bangalore High Performance Center',
+  TC02: 'Chennai Sports Complex',
+  TC03: 'Delhi Sports Authority Center'
+};
+
+async function resolveCoach(coachIdOrName) {
+  if (!coachIdOrName) return null;
+  const coach = await mongoService.findOneDocument('coaches', {
+    $or: [{ _id: coachIdOrName }, { name: coachIdOrName }]
+  });
+  return coach || { _id: coachIdOrName, name: coachIdOrName };
+}
+
+async function resolveTeam(teamIdOrName) {
+  if (!teamIdOrName) return null;
+  const team = await mongoService.findOneDocument('teams', {
+    $or: [{ _id: teamIdOrName }, { name: teamIdOrName }]
+  });
+  return team || { _id: teamIdOrName, name: teamIdOrName };
+}
 
 async function getPlayerRelationships(playerId) {
   const playerGraph = xmlSchemaService.getGraphEntitySchema('Player');
@@ -196,19 +263,37 @@ async function getPlayerRelationships(playerId) {
       `
       MATCH (p:${playerGraph.label} {${playerGraph.keyProperty}: $playerId})
       OPTIONAL MATCH (p)-[:MEMBER_OF]->(t:Team)
-      OPTIONAL MATCH (p)-[:COACHED_BY]->(c:Coach)
-      OPTIONAL MATCH (p)-[:PLAYS]->(s:Sport)
+      OPTIONAL MATCH (c:Coach)-[:COACHES]->(t)
       OPTIONAL MATCH (p)-[:TRAINS_AT]->(tc:TrainingCenter)
       RETURN
-        p.id AS playerId, p.name AS playerName,
-        t.id AS teamId, t.name AS teamName,
-        c.id AS coachId, c.name AS coachName,
-        s.id AS sportId, s.name AS sport,
-        tc.id AS trainingCenterId, tc.name AS trainingCenterName
+        p.id AS playerId,
+        t.id AS teamId,
+        c.id AS coachId,
+        tc.id AS trainingCenterId
       `,
       { playerId }
     );
-    return records.length > 0 ? records[0] : null;
+    if (!records || records.length === 0) return null;
+    const rel = records[0];
+
+    // Fetch entity documents from MongoDB
+    const playerDoc = await mongoService.findOneDocument('players', { _id: playerId });
+    const teamDoc = rel.teamId ? await mongoService.findOneDocument('teams', { _id: rel.teamId }) : null;
+    const coachDoc = rel.coachId ? await mongoService.findOneDocument('coaches', { _id: rel.coachId }) : null;
+
+    const tcId = rel.trainingCenterId || playerDoc?.trainingCenterId || null;
+
+    return {
+      playerId: rel.playerId || playerId,
+      playerName: playerDoc?.name || null,
+      teamId: rel.teamId || null,
+      teamName: teamDoc?.name || null,
+      coachId: rel.coachId || null,
+      coachName: coachDoc?.name || null,
+      sport: playerDoc?.sport || teamDoc?.sport || null,
+      trainingCenterId: tcId,
+      trainingCenterName: tcId ? (TRAINING_CENTERS_MAP[tcId] || tcId) : null
+    };
   } catch (err) {
     console.warn(`[Warning] getPlayerRelationships query error: ${err.message}`);
     return null;
@@ -217,7 +302,38 @@ async function getPlayerRelationships(playerId) {
 
 async function getPlayersByCoach(coachIdOrName) {
   try {
-    return await neo4jService.getPlayersCoachedBy(coachIdOrName);
+    const coach = await resolveCoach(coachIdOrName);
+    const coachId = coach?._id || coachIdOrName;
+    const records = await neo4jService.getPlayersCoachedBy(coachId);
+    if (!records || records.length === 0) return [];
+
+    const playerIds = [...new Set(records.map(r => r.playerId).filter(Boolean))];
+    const teamIds = [...new Set(records.map(r => r.teamId).filter(Boolean))];
+
+    const playerDocs = await mongoService.findDocuments('players', { _id: { $in: playerIds } });
+    const teamDocs = teamIds.length > 0 ? await mongoService.findDocuments('teams', { _id: { $in: teamIds } }) : [];
+
+    const playerMap = new Map(playerDocs.map(p => [p._id, p]));
+    const teamMap = new Map(teamDocs.map(t => [t._id, t]));
+
+    return records.map(r => {
+      const pDoc = playerMap.get(r.playerId) || {};
+      const tDoc = teamMap.get(r.teamId) || {};
+      return {
+        id: r.playerId,
+        playerId: r.playerId,
+        name: pDoc.name || r.playerId,
+        playerName: pDoc.name || r.playerId,
+        age: pDoc.age,
+        gender: pDoc.gender,
+        sport: pDoc.sport || tDoc.sport || coach?.sport || 'General',
+        position: pDoc.position || 'Player',
+        teamId: r.teamId || null,
+        teamName: tDoc.name || null,
+        coachId: coachId,
+        coachName: coach?.name || coachId
+      };
+    });
   } catch (err) {
     console.warn(`[Warning] getPlayersByCoach query error: ${err.message}`);
     return [];
@@ -226,7 +342,28 @@ async function getPlayersByCoach(coachIdOrName) {
 
 async function getTeamsByCoach(coachIdOrName) {
   try {
-    return await neo4jService.getTeamsCoachedBy(coachIdOrName);
+    const coach = await resolveCoach(coachIdOrName);
+    const coachId = coach?._id || coachIdOrName;
+    const records = await neo4jService.getTeamsCoachedBy(coachId);
+    if (!records || records.length === 0) return [];
+
+    const teamIds = records.map(r => r.teamId).filter(Boolean);
+    const teamDocs = await mongoService.findDocuments('teams', { _id: { $in: teamIds } });
+    const teamMap = new Map(teamDocs.map(t => [t._id, t]));
+
+    return records.map(r => {
+      const tDoc = teamMap.get(r.teamId) || {};
+      return {
+        id: r.teamId,
+        teamId: r.teamId,
+        name: tDoc.name || r.teamId,
+        teamName: tDoc.name || r.teamId,
+        sport: tDoc.sport || coach?.sport || 'General',
+        category: tDoc.category || 'Senior',
+        coachId: coachId,
+        coachName: coach?.name || coachId
+      };
+    });
   } catch (err) {
     console.warn(`[Warning] getTeamsByCoach query error: ${err.message}`);
     return [];
@@ -235,7 +372,30 @@ async function getTeamsByCoach(coachIdOrName) {
 
 async function getPlayersByTeam(teamIdOrName) {
   try {
-    return await neo4jService.getPlayersInTeam(teamIdOrName);
+    const team = await resolveTeam(teamIdOrName);
+    const teamId = team?._id || teamIdOrName;
+    const records = await neo4jService.getPlayersInTeam(teamId);
+    if (!records || records.length === 0) return [];
+
+    const playerIds = records.map(r => r.playerId).filter(Boolean);
+    const playerDocs = await mongoService.findDocuments('players', { _id: { $in: playerIds } });
+    const playerMap = new Map(playerDocs.map(p => [p._id, p]));
+
+    return records.map(r => {
+      const pDoc = playerMap.get(r.playerId) || {};
+      return {
+        id: r.playerId,
+        playerId: r.playerId,
+        name: pDoc.name || r.playerId,
+        playerName: pDoc.name || r.playerId,
+        age: pDoc.age,
+        gender: pDoc.gender,
+        sport: pDoc.sport || team?.sport || 'General',
+        position: pDoc.position || 'Player',
+        teamId: teamId,
+        teamName: team?.name || teamId
+      };
+    });
   } catch (err) {
     console.warn(`[Warning] getPlayersByTeam query error: ${err.message}`);
     return [];
@@ -243,18 +403,41 @@ async function getPlayersByTeam(teamIdOrName) {
 }
 
 async function getTournamentPlayers(tournamentId) {
-  const rel = xmlSchemaService.getRelationshipSchema('PARTICIPATES_IN');
-  const tournamentGraph = xmlSchemaService.getGraphEntitySchema('Tournament');
-  const playerGraph = xmlSchemaService.getGraphEntitySchema('Player');
-
   try {
-    return await neo4jService.runCypher(
+    // Players participate through their teams: (Player)-[:MEMBER_OF]->(Team)-[:PARTICIPATES_IN]->(Tournament)
+    const records = await neo4jService.runCypher(
       `
-      MATCH (p:${playerGraph.label})-[:${rel.name}]->(t:${tournamentGraph.label} {${tournamentGraph.keyProperty}: $tournamentId})
-      RETURN p.id AS id, p.id AS playerId, p.name AS name, p.name AS playerName, p.sport AS sport
+      MATCH (p:Player)-[:MEMBER_OF]->(t:Team)-[:PARTICIPATES_IN]->(tr:Tournament {id: $tournamentId})
+      RETURN DISTINCT p.id AS playerId, t.id AS teamId
       `,
       { tournamentId }
     );
+
+    if (!records || records.length === 0) return [];
+
+    const playerIds = records.map(r => r.playerId).filter(Boolean);
+    const teamIds = [...new Set(records.map(r => r.teamId).filter(Boolean))];
+
+    const playerDocs = await mongoService.findDocuments('players', { _id: { $in: playerIds } });
+    const teamDocs = teamIds.length > 0 ? await mongoService.findDocuments('teams', { _id: { $in: teamIds } }) : [];
+
+    const playerMap = new Map(playerDocs.map(p => [p._id, p]));
+    const teamMap = new Map(teamDocs.map(t => [t._id, t]));
+
+    return records.map(r => {
+      const pDoc = playerMap.get(r.playerId) || {};
+      const tDoc = teamMap.get(r.teamId) || {};
+      return {
+        id: r.playerId,
+        playerId: r.playerId,
+        name: pDoc.name || r.playerId,
+        playerName: pDoc.name || r.playerId,
+        sport: pDoc.sport || tDoc.sport || 'General',
+        position: pDoc.position || 'Player',
+        teamId: r.teamId,
+        teamName: tDoc.name || null
+      };
+    });
   } catch (err) {
     console.warn(`[Warning] getTournamentPlayers query error: ${err.message}`);
     return [];
@@ -262,18 +445,32 @@ async function getTournamentPlayers(tournamentId) {
 }
 
 async function getTournamentTeams(tournamentId) {
-  const rel = xmlSchemaService.getRelationshipSchema('PARTICIPATES_IN');
-  const tournamentGraph = xmlSchemaService.getGraphEntitySchema('Tournament');
-  const teamGraph = xmlSchemaService.getGraphEntitySchema('Team');
-
   try {
-    return await neo4jService.runCypher(
+    const records = await neo4jService.runCypher(
       `
-      MATCH (t:${teamGraph.label})-[:${rel.name}]->(tr:${tournamentGraph.label} {${tournamentGraph.keyProperty}: $tournamentId})
-      RETURN t.id AS id, t.id AS teamId, t.name AS name, t.name AS teamName, t.sport AS sport
+      MATCH (t:Team)-[:PARTICIPATES_IN]->(tr:Tournament {id: $tournamentId})
+      RETURN t.id AS teamId
       `,
       { tournamentId }
     );
+
+    if (!records || records.length === 0) return [];
+
+    const teamIds = records.map(r => r.teamId).filter(Boolean);
+    const teamDocs = await mongoService.findDocuments('teams', { _id: { $in: teamIds } });
+    const teamMap = new Map(teamDocs.map(t => [t._id, t]));
+
+    return records.map(r => {
+      const tDoc = teamMap.get(r.teamId) || {};
+      return {
+        id: r.teamId,
+        teamId: r.teamId,
+        name: tDoc.name || r.teamId,
+        teamName: tDoc.name || r.teamId,
+        sport: tDoc.sport || 'General',
+        category: tDoc.category || 'Senior'
+      };
+    });
   } catch (err) {
     console.warn(`[Warning] getTournamentTeams query error: ${err.message}`);
     return [];
@@ -302,16 +499,24 @@ async function getPlayerFull(playerId) {
 
   return {
     ...profile,
+    relationships: graphData || null,
     graph: graphData
       ? {
           team: graphData.teamId ? { id: graphData.teamId, name: graphData.teamName } : null,
           coach: graphData.coachId ? { id: graphData.coachId, name: graphData.coachName } : null,
-          sport: graphData.sportId ? { id: graphData.sportId, name: graphData.sport } : null,
           trainingCenter: graphData.trainingCenterId
             ? { id: graphData.trainingCenterId, name: graphData.trainingCenterName }
             : null
         }
-      : null
+      : null,
+    teamId: graphData?.teamId || null,
+    teamName: graphData?.teamName || null,
+    team: graphData?.teamName || null,
+    coachId: graphData?.coachId || null,
+    coachName: graphData?.coachName || null,
+    coach: graphData?.coachName || null,
+    trainingCenterId: graphData?.trainingCenterId || null,
+    trainingCenterName: graphData?.trainingCenterName || null
   };
 }
 
@@ -327,15 +532,8 @@ async function getCoachPlayerTraining(coachIdOrName) {
   console.log(`  → Neo4j: Traversing relationships '${coachesRel.name}' & '${memberOfRel.name}'`);
   console.log(`  → MongoDB: Querying collection '${trainingEntity.collection}' by foreignKey '${trainingEntity.foreignKey}'`);
 
-  let graphPlayers = [];
-  try {
-    graphPlayers = await neo4jService.getPlayersCoachedBy(coachIdOrName);
-  } catch (err) {
-    console.warn(`[Warning] Neo4j getPlayersCoachedBy error: ${err.message}`);
-  }
-
+  const graphPlayers = await getPlayersByCoach(coachIdOrName);
   if (!graphPlayers || graphPlayers.length === 0) {
-    // If Neo4j is offline or has no data, return empty list gracefully
     return [];
   }
 
@@ -368,31 +566,7 @@ async function getCoachPlayerTraining(coachIdOrName) {
  * Cross-DB query: Finds coached players in Neo4j and merges their full MongoDB documents
  */
 async function getCoachPlayersWithProfiles(coachIdOrName) {
-  const playerEntity = xmlSchemaService.getEntitySchema('Player');
-
-  let graphPlayers = [];
-  try {
-    graphPlayers = await neo4jService.getPlayersCoachedBy(coachIdOrName);
-  } catch (err) {
-    console.warn(`[Warning] Neo4j getPlayersCoachedBy error: ${err.message}`);
-  }
-
-  if (!graphPlayers || graphPlayers.length === 0) return [];
-
-  const playerIds = graphPlayers.map(p => p.playerId);
-
-  const profiles = await mongoService.findDocuments(playerEntity.collection, {
-    [playerEntity.primaryKey]: { $in: playerIds }
-  });
-
-  return graphPlayers.map(gp => {
-    const profile = profiles.find(p => p[playerEntity.primaryKey] === gp.playerId) || {};
-    return {
-      ...profile,
-      team: gp.teamName || null,
-      coachName: gp.coachName || coachIdOrName
-    };
-  });
+  return getPlayersByCoach(coachIdOrName);
 }
 
 module.exports = {
