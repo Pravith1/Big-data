@@ -1475,7 +1475,7 @@ export default function App() {
                       <div style={{ fontSize: '13px', lineHeight: 1.8 }}>
                         <div>AFFILIATED TEAM: <strong>{fullProfileData.graph?.team?.name || fullProfileData.relationships?.teamName || fullProfileData.relationships?.team?.name || fullProfileData.teamName || fullProfileData.team || 'None assigned'}</strong></div>
                         <div>PRIMARY COACH: <strong>{fullProfileData.graph?.coach?.name || fullProfileData.relationships?.coachName || fullProfileData.relationships?.coach?.name || fullProfileData.coachName || fullProfileData.coach || 'None assigned'}</strong></div>
-                        <div>TRAINING CENTER: <strong>{fullProfileData.graph?.trainingCenter?.name || fullProfileData.relationships?.trainingCenterName || fullProfileData.relationships?.trainingCenter?.name || fullProfileData.trainingCenterName || 'Main Academy'}</strong></div>
+
                       </div>
                     </div>
                   </div>

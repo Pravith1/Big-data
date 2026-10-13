@@ -143,8 +143,4 @@ export const addTeamToTournament = (data) =>
     body: JSON.stringify(data)
   });
 
-export const assignPlayerToTrainingCenter = (data) =>
-  request('/relationships/player-training-center', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
+

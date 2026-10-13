@@ -7,11 +7,7 @@ const { getDriver } = require('../config/neo4j');
 
 
 
-const TRAINING_CENTERS = [
-  { id: 'TC01', name: 'Bangalore High Performance Center', city: 'Bangalore' },
-  { id: 'TC02', name: 'Chennai Sports Complex', city: 'Chennai' },
-  { id: 'TC03', name: 'Delhi Sports Authority Center', city: 'Delhi' }
-];
+
 
 const COACHES = [
   { _id: 'C101', name: 'Rahul Sharma', sport: 'Football', role: 'Head Coach', experienceYears: 12 },
@@ -33,16 +29,16 @@ const TOURNAMENTS = [
 ];
 
 const PLAYERS = [
-  { _id: 'P101', name: 'Pravith', age: 20, gender: 'Male', sport: 'Football', position: 'Midfielder', trainingCenterId: 'TC01', contact: { email: 'pravith@example.com', phone: '9876543210' }, joinedDate: '2025-06-10' },
-  { _id: 'P102', name: 'Arjun', age: 22, gender: 'Male', sport: 'Football', position: 'Forward', trainingCenterId: 'TC01', contact: { email: 'arjun@example.com', phone: '9876543211' }, joinedDate: '2025-07-01' },
-  { _id: 'P103', name: 'Sneha', age: 21, gender: 'Female', sport: 'Football', position: 'Defender', trainingCenterId: 'TC03', contact: { email: 'sneha@example.com', phone: '9876543212' }, joinedDate: '2025-08-15' },
-  { _id: 'P104', name: 'Arun', age: 23, gender: 'Male', sport: 'Cricket', position: 'Batsman', trainingCenterId: 'TC02', contact: { email: 'arun@example.com', phone: '9876543213' }, joinedDate: '2025-05-20' },
-  { _id: 'P105', name: 'Divya', age: 20, gender: 'Female', sport: 'Cricket', position: 'Bowler', trainingCenterId: 'TC02', contact: { email: 'divya@example.com', phone: '9876543214' }, joinedDate: '2025-06-25' },
-  { _id: 'P106', name: 'Kiran', age: 24, gender: 'Male', sport: 'Cricket', position: 'All-Rounder', trainingCenterId: 'TC02', contact: { email: 'kiran@example.com', phone: '9876543215' }, joinedDate: '2025-04-10' },
-  { _id: 'P107', name: 'Priya', age: 19, gender: 'Female', sport: 'Badminton', position: 'Singles', trainingCenterId: 'TC01', contact: { email: 'priya@example.com', phone: '9876543216' }, joinedDate: '2025-09-01' },
-  { _id: 'P108', name: 'Rohan', age: 25, gender: 'Male', sport: 'Badminton', position: 'Doubles', trainingCenterId: 'TC01', contact: { email: 'rohan@example.com', phone: '9876543217' }, joinedDate: '2025-03-15' },
-  { _id: 'P109', name: 'Ananya', age: 21, gender: 'Female', sport: 'Swimming', position: 'Freestyle', trainingCenterId: 'TC03', contact: { email: 'ananya@example.com', phone: '9876543218' }, joinedDate: '2025-07-20' },
-  { _id: 'P110', name: 'Vikram', age: 26, gender: 'Male', sport: 'Swimming', position: 'Butterfly', trainingCenterId: 'TC03', contact: { email: 'vikram@example.com', phone: '9876543219' }, joinedDate: '2025-02-28' }
+  { _id: 'P101', name: 'Pravith', age: 20, gender: 'Male', sport: 'Football', position: 'Midfielder', contact: { email: 'pravith@example.com', phone: '9876543210' }, joinedDate: '2025-06-10' },
+  { _id: 'P102', name: 'Arjun', age: 22, gender: 'Male', sport: 'Football', position: 'Forward', contact: { email: 'arjun@example.com', phone: '9876543211' }, joinedDate: '2025-07-01' },
+  { _id: 'P103', name: 'Sneha', age: 21, gender: 'Female', sport: 'Football', position: 'Defender', contact: { email: 'sneha@example.com', phone: '9876543212' }, joinedDate: '2025-08-15' },
+  { _id: 'P104', name: 'Arun', age: 23, gender: 'Male', sport: 'Cricket', position: 'Batsman', contact: { email: 'arun@example.com', phone: '9876543213' }, joinedDate: '2025-05-20' },
+  { _id: 'P105', name: 'Divya', age: 20, gender: 'Female', sport: 'Cricket', position: 'Bowler', contact: { email: 'divya@example.com', phone: '9876543214' }, joinedDate: '2025-06-25' },
+  { _id: 'P106', name: 'Kiran', age: 24, gender: 'Male', sport: 'Cricket', position: 'All-Rounder', contact: { email: 'kiran@example.com', phone: '9876543215' }, joinedDate: '2025-04-10' },
+  { _id: 'P107', name: 'Priya', age: 19, gender: 'Female', sport: 'Badminton', position: 'Singles', contact: { email: 'priya@example.com', phone: '9876543216' }, joinedDate: '2025-09-01' },
+  { _id: 'P108', name: 'Rohan', age: 25, gender: 'Male', sport: 'Badminton', position: 'Doubles', contact: { email: 'rohan@example.com', phone: '9876543217' }, joinedDate: '2025-03-15' },
+  { _id: 'P109', name: 'Ananya', age: 21, gender: 'Female', sport: 'Swimming', position: 'Freestyle', contact: { email: 'ananya@example.com', phone: '9876543218' }, joinedDate: '2025-07-20' },
+  { _id: 'P110', name: 'Vikram', age: 26, gender: 'Male', sport: 'Swimming', position: 'Butterfly', contact: { email: 'vikram@example.com', phone: '9876543219' }, joinedDate: '2025-02-28' }
 ];
 
 const TRAINING_SESSIONS = [
@@ -108,11 +104,7 @@ async function seedNeo4j() {
     // Clear existing nodes and relationships
     await session.run('MATCH (n) DETACH DELETE n');
 
-    // Create Training Centers (graph nodes only - id)
-    for (const tc of TRAINING_CENTERS) {
-      await session.run('CREATE (:TrainingCenter {id: $id})', { id: tc.id });
-    }
-    results.trainingCenters = TRAINING_CENTERS.length;
+
 
     // Create Coaches (graph nodes only - id)
     for (const c of COACHES) {
@@ -174,26 +166,6 @@ async function seedNeo4j() {
       );
     }
 
-    // Player TRAINS_AT TrainingCenter
-    const playerTC = [
-      { playerId: 'P101', tcId: 'TC01' },
-      { playerId: 'P102', tcId: 'TC01' },
-      { playerId: 'P103', tcId: 'TC03' },
-      { playerId: 'P104', tcId: 'TC02' },
-      { playerId: 'P105', tcId: 'TC02' },
-      { playerId: 'P106', tcId: 'TC02' },
-      { playerId: 'P107', tcId: 'TC01' },
-      { playerId: 'P108', tcId: 'TC01' },
-      { playerId: 'P109', tcId: 'TC03' },
-      { playerId: 'P110', tcId: 'TC03' }
-    ];
-    for (const r of playerTC) {
-      await session.run(
-        'MATCH (p:Player {id: $playerId}) MATCH (tc:TrainingCenter {id: $tcId}) CREATE (p)-[:TRAINS_AT]->(tc)',
-        r
-      );
-    }
-
     // Team PARTICIPATES_IN Tournament
     const teamTournament = [
       { teamId: 'TEAM01', tournamentId: 'T501' },
@@ -210,7 +182,6 @@ async function seedNeo4j() {
     results.relationships = {
       COACHES: coachTeam.length,
       MEMBER_OF: playerTeam.length,
-      TRAINS_AT: playerTC.length,
       PARTICIPATES_IN: teamTournament.length
     };
 

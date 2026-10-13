@@ -51,25 +51,8 @@ async function addTeamToTournament(req, res) {
   }
 }
 
-// POST /api/relationships/player-training-center
-// Body: { playerId, trainingCenterId }
-async function assignPlayerToTrainingCenter(req, res) {
-  try {
-    const { playerId, trainingCenterId } = req.body;
-    if (!playerId || !trainingCenterId) {
-      return res.status(400).json({ success: false, error: 'playerId and trainingCenterId are required' });
-    }
-    const rel = xmlSchemaService.getRelationshipStorage('TRAINS_AT');
-    const result = await neo4jService.createRelationship('Player', playerId, rel.name, 'TrainingCenter', trainingCenterId);
-    res.json({ success: true, data: result });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-}
-
 module.exports = {
   assignPlayerToTeam,
   assignCoachToTeam,
-  addTeamToTournament,
-  assignPlayerToTrainingCenter
+  addTeamToTournament
 };

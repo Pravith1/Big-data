@@ -234,11 +234,7 @@ async function getPerformanceByTournament(tournamentId) {
 //  NEO4J GRAPH OPERATIONS DRIVEN BY XML SCHEMA & ENRICHED BY MONGODB
 // ─────────────────────────────────────────────────────────
 
-const TRAINING_CENTERS_MAP = {
-  TC01: 'Bangalore High Performance Center',
-  TC02: 'Chennai Sports Complex',
-  TC03: 'Delhi Sports Authority Center'
-};
+
 
 async function resolveCoach(coachIdOrName) {
   if (!coachIdOrName) return null;
@@ -264,12 +260,10 @@ async function getPlayerRelationships(playerId) {
       MATCH (p:${playerGraph.label} {${playerGraph.keyProperty}: $playerId})
       OPTIONAL MATCH (p)-[:MEMBER_OF]->(t:Team)
       OPTIONAL MATCH (c:Coach)-[:COACHES]->(t)
-      OPTIONAL MATCH (p)-[:TRAINS_AT]->(tc:TrainingCenter)
       RETURN
         p.id AS playerId,
         t.id AS teamId,
-        c.id AS coachId,
-        tc.id AS trainingCenterId
+        c.id AS coachId
       `,
       { playerId }
     );
@@ -281,8 +275,6 @@ async function getPlayerRelationships(playerId) {
     const teamDoc = rel.teamId ? await mongoService.findOneDocument('teams', { _id: rel.teamId }) : null;
     const coachDoc = rel.coachId ? await mongoService.findOneDocument('coaches', { _id: rel.coachId }) : null;
 
-    const tcId = rel.trainingCenterId || playerDoc?.trainingCenterId || null;
-
     return {
       playerId: rel.playerId || playerId,
       playerName: playerDoc?.name || null,
@@ -290,9 +282,7 @@ async function getPlayerRelationships(playerId) {
       teamName: teamDoc?.name || null,
       coachId: rel.coachId || null,
       coachName: coachDoc?.name || null,
-      sport: playerDoc?.sport || teamDoc?.sport || null,
-      trainingCenterId: tcId,
-      trainingCenterName: tcId ? (TRAINING_CENTERS_MAP[tcId] || tcId) : null
+      sport: playerDoc?.sport || teamDoc?.sport || null
     };
   } catch (err) {
     console.warn(`[Warning] getPlayerRelationships query error: ${err.message}`);
@@ -503,10 +493,7 @@ async function getPlayerFull(playerId) {
     graph: graphData
       ? {
           team: graphData.teamId ? { id: graphData.teamId, name: graphData.teamName } : null,
-          coach: graphData.coachId ? { id: graphData.coachId, name: graphData.coachName } : null,
-          trainingCenter: graphData.trainingCenterId
-            ? { id: graphData.trainingCenterId, name: graphData.trainingCenterName }
-            : null
+          coach: graphData.coachId ? { id: graphData.coachId, name: graphData.coachName } : null
         }
       : null,
     teamId: graphData?.teamId || null,
@@ -514,9 +501,7 @@ async function getPlayerFull(playerId) {
     team: graphData?.teamName || null,
     coachId: graphData?.coachId || null,
     coachName: graphData?.coachName || null,
-    coach: graphData?.coachName || null,
-    trainingCenterId: graphData?.trainingCenterId || null,
-    trainingCenterName: graphData?.trainingCenterName || null
+    coach: graphData?.coachName || null
   };
 }
 

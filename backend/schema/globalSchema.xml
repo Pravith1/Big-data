@@ -15,7 +15,7 @@
             <field name="gender" type="string" required="false" default="Male" allowed="Male,Female,Other"/>
             <field name="sport" type="string" required="false" default="Football"/>
             <field name="position" type="string" required="false" default="Player"/>
-            <field name="trainingCenterId" type="string" required="false" foreignKey="TrainingCenter.id"/>
+
             <field name="contact" type="object" required="false">
                 <field name="email" type="string" required="false" default=""/>
                 <field name="phone" type="string" required="false" default=""/>
@@ -137,12 +137,7 @@
         </properties>
     </graphEntity>
 
-    <graphEntity name="TrainingCenter">
-        <storage database="neo4j" label="TrainingCenter" keyProperty="id"/>
-        <properties>
-            <property name="id" type="string" required="true" key="true"/>
-        </properties>
-    </graphEntity>
+
 
     <graphEntity name="Tournament">
         <storage database="neo4j" label="Tournament" keyProperty="id"/>
@@ -167,9 +162,7 @@
 
 
 
-    <relationship name="TRAINS_AT" from="Player" to="TrainingCenter">
-        <storage database="neo4j"/>
-    </relationship>
+
 
     <relationship name="PARTICIPATES_IN" from="Team" to="Tournament">
         <storage database="neo4j"/>
