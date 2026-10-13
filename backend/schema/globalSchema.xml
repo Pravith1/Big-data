@@ -146,6 +146,13 @@
         </properties>
     </graphEntity>
 
+    <graphEntity name="MedicalRecord">
+        <storage database="neo4j" label="MedicalRecord" keyProperty="id"/>
+        <properties>
+            <property name="id" type="string" required="true" key="true"/>
+        </properties>
+    </graphEntity>
+
 
     <!-- ================================================================= -->
     <!-- Neo4j Graph Relationships                                         -->
@@ -165,6 +172,10 @@
 
 
     <relationship name="PARTICIPATES_IN" from="Team" to="Tournament">
+        <storage database="neo4j"/>
+    </relationship>
+
+    <relationship name="HAS" from="Player" to="MedicalRecord">
         <storage database="neo4j"/>
     </relationship>
 

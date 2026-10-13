@@ -24,4 +24,9 @@ router.post('/coach-team', relationshipController.assignCoachToTeam);
 //   Creates: (Team)-[:PARTICIPATES_IN]->(Tournament)
 router.post('/team-tournament', relationshipController.addTeamToTournament);
 
+// POST /api/relationships/player-medical-record
+//   Body: { playerId, medicalRecordId }
+//   Creates: (Player)-[:HAS]->(MedicalRecord)
+router.post('/player-medical-record', relationshipController.assignPlayerMedicalRecord);
+
 module.exports = router;

@@ -26,7 +26,8 @@ import {
   deleteTrainingSession,
   assignPlayerToTeam,
   assignCoachToTeam,
-  addTeamToTournament
+  addTeamToTournament,
+  assignPlayerMedicalRecord
 } from './api';
 
 const SPORTS_LIST = ['ALL', 'Football', 'Cricket', 'Badminton', 'Swimming'];
@@ -144,6 +145,7 @@ export default function App() {
   const [relCoachId, setRelCoachId] = useState(KNOWN_COACHES[0].id);
   const [relTeamId, setRelTeamId] = useState(KNOWN_TEAMS[0].id);
   const [relTournamentId, setRelTournamentId] = useState('');
+  const [relMedicalRecordId, setRelMedicalRecordId] = useState('');
   const [relSubmitting, setRelSubmitting] = useState(false);
 
   // ─── Theme Management ───────────────────────────────────────────────────────
@@ -456,6 +458,9 @@ export default function App() {
       } else if (relFormType === 'team-tournament') {
         await addTeamToTournament({ teamId: relTeamId, tournamentId: relTournamentId });
         showNotification(`REGISTRATION: ${tName} registered for ${trnName}`, 'success');
+      } else if (relFormType === 'player-medical-record') {
+        await assignPlayerMedicalRecord({ playerId: relPlayerId, medicalRecordId: relMedicalRecordId });
+        showNotification(`MEDICAL LINK: ${pName} linked to record ${relMedicalRecordId} in Neo4j`, 'success');
       }
       loadPlayers();
       if (selectedCoach) loadCoachData(selectedCoach.id);
@@ -531,6 +536,7 @@ export default function App() {
     if (relFormType === 'player-team') return `${pName} will be enrolled as an active roster member of ${tName}. Head coach will mentor them through the team.`;
     if (relFormType === 'coach-team') return `${cName} will assume head coaching duties for ${tName}.`;
     if (relFormType === 'team-tournament') return `${tName} will enter as a participating team in ${trnName}.`;
+    if (relFormType === 'player-medical-record') return `${pName} will be linked to medical record ${relMedicalRecordId || '(select record)'} via a HAS edge in Neo4j.`;
     return 'Confirm connection parameters.';
   }
 
@@ -565,7 +571,8 @@ export default function App() {
               { id: 'tournaments', num: '03', label: 'TOURNAMENTS' },
               { id: 'teams', num: '04', label: 'TEAMS' },
               { id: 'training', num: '05', label: 'TRAINING_LOGS' },
-              { id: 'relations', num: '06', label: 'CONNECTIONS' }
+              { id: 'relations', num: '06', label: 'CONNECTIONS' },
+              { id: 'data-map', num: '07', label: 'DATA_MAP' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1400,6 +1407,80 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            07 // DATA MAP MODULE
+            ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'data-map' && (
+          <section>
+            <div className="section-header">
+              <div>
+                <h1 className="section-header-title">MONGODB & NEO4J DATA MAP</h1>
+                <p className="section-header-sub">
+                  MongoDB stores document data. Neo4j stores the graph nodes and relationships that connect those documents.
+                </p>
+              </div>
+            </div>
+
+            <div className="brutal-card" style={{ marginBottom: '24px' }}>
+              <div className="brutal-card-header">
+                <h3 className="brutal-card-title">MONGODB COLLECTIONS</h3>
+                <span className="brutal-badge brutal-badge-accent">DOCUMENT STORE</span>
+              </div>
+              <div className="brutal-table-container">
+                <table className="brutal-table">
+                  <thead>
+                    <tr>
+                      <th>COLLECTION</th>
+                      <th>WHAT IT STORES</th>
+                      <th>KEY FIELDS</th>
+                      <th>REFERENCES</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MONGODB_COLLECTIONS.map(item => (
+                      <tr key={item.collection}>
+                        <td><strong>{item.collection}</strong></td>
+                        <td>{item.stores}</td>
+                        <td>{item.keyFields}</td>
+                        <td>{item.reference}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="brutal-card">
+              <div className="brutal-card-header">
+                <h3 className="brutal-card-title">NEO4J RELATIONSHIPS</h3>
+                <span className="brutal-badge brutal-badge-accent">GRAPH STORE</span>
+              </div>
+              <div className="brutal-table-container">
+                <table className="brutal-table">
+                  <thead>
+                    <tr>
+                      <th>FROM NODE</th>
+                      <th>RELATIONSHIP</th>
+                      <th>TO NODE</th>
+                      <th>WHAT IT REPRESENTS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {NEO4J_RELATIONSHIPS.map(item => (
+                      <tr key={item.relationship}>
+                        <td><strong>:{item.from}</strong></td>
+                        <td><span className="brutal-badge brutal-badge-accent">{item.relationship}</span></td>
+                        <td><strong>:{item.to}</strong></td>
+                        <td>{item.purpose}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </section>

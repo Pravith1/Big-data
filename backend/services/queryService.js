@@ -217,6 +217,30 @@ async function getMedicalRecordsByPlayer(playerId) {
   return mongoService.findDocuments(schema.collection, { [fk]: playerId });
 }
 
+/**
+ * Graph-aware version: traverses (:Player)-[:HAS]->(:MedicalRecord) in Neo4j
+ * to collect record IDs, then fetches full documents from MongoDB.
+ * Falls back to FK-based MongoDB query if Neo4j is unavailable.
+ */
+async function getMedicalRecordsByPlayerGraph(playerId) {
+  try {
+    const records = await neo4jService.runCypher(
+      `MATCH (p:Player {id: $playerId})-[:HAS]->(mr:MedicalRecord)
+       RETURN mr.id AS medicalRecordId`,
+      { playerId }
+    );
+    if (records && records.length > 0) {
+      const mrIds = records.map(r => r.medicalRecordId).filter(Boolean);
+      return mongoService.findDocuments('medical_records', { _id: { $in: mrIds } });
+    }
+    // Fallback to FK-based query
+    return getMedicalRecordsByPlayer(playerId);
+  } catch (err) {
+    console.warn(`[Warning] getMedicalRecordsByPlayerGraph Neo4j error: ${err.message} — falling back to MongoDB FK query`);
+    return getMedicalRecordsByPlayer(playerId);
+  }
+}
+
 // --- Performance Records ---
 async function getPerformanceByPlayer(playerId) {
   const schema = xmlSchemaService.getEntitySchema('PerformanceRecord');
@@ -578,6 +602,7 @@ module.exports = {
   updateTournamentDoc,
   deleteTournamentDoc,
   getMedicalRecordsByPlayer,
+  getMedicalRecordsByPlayerGraph,
   getPerformanceByPlayer,
   getPerformanceByTournament,
 

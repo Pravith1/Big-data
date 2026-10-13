@@ -51,8 +51,25 @@ async function addTeamToTournament(req, res) {
   }
 }
 
+// POST /api/relationships/player-medical-record
+// Body: { playerId, medicalRecordId }
+async function assignPlayerMedicalRecord(req, res) {
+  try {
+    const { playerId, medicalRecordId } = req.body;
+    if (!playerId || !medicalRecordId) {
+      return res.status(400).json({ success: false, error: 'playerId and medicalRecordId are required' });
+    }
+    const rel = xmlSchemaService.getRelationshipStorage('HAS');
+    const result = await neo4jService.createRelationship('Player', playerId, rel.name, 'MedicalRecord', medicalRecordId);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 module.exports = {
   assignPlayerToTeam,
   assignCoachToTeam,
-  addTeamToTournament
+  addTeamToTournament,
+  assignPlayerMedicalRecord
 };

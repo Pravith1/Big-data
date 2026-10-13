@@ -130,6 +130,12 @@ async function seedNeo4j() {
     }
     results.players = PLAYERS.length;
 
+    // Create MedicalRecord nodes (graph nodes only - id)
+    for (const mr of MEDICAL_RECORDS) {
+      await session.run('CREATE (:MedicalRecord {id: $id})', { id: mr._id });
+    }
+    results.medicalRecords = MEDICAL_RECORDS.length;
+
     // ── Relationships (Maintained strictly in Neo4j) ───────────────
 
     // Coach COACHES Team
@@ -179,10 +185,19 @@ async function seedNeo4j() {
       );
     }
 
+    // Player HAS MedicalRecord
+    for (const mr of MEDICAL_RECORDS) {
+      await session.run(
+        'MATCH (p:Player {id: $playerId}) MATCH (mr:MedicalRecord {id: $mrId}) CREATE (p)-[:HAS]->(mr)',
+        { playerId: mr.playerId, mrId: mr._id }
+      );
+    }
+
     results.relationships = {
       COACHES: coachTeam.length,
       MEMBER_OF: playerTeam.length,
-      PARTICIPATES_IN: teamTournament.length
+      PARTICIPATES_IN: teamTournament.length,
+      HAS: MEDICAL_RECORDS.length
     };
 
     return results;

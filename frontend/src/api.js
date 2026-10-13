@@ -143,4 +143,9 @@ export const addTeamToTournament = (data) =>
     body: JSON.stringify(data)
   });
 
+export const assignPlayerMedicalRecord = (data) =>
+  request('/relationships/player-medical-record', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
 
